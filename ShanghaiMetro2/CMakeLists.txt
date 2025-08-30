@@ -12,6 +12,7 @@ find_package(Qt${QT_VERSION_MAJOR}
         Core
         Gui
         Widgets
+        Multimedia
 )
 qt_standard_project_setup()
 

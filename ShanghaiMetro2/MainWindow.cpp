@@ -24,8 +24,56 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), pathFinder(&metroGraph), selectedStrategy(MIN_STATIONS) {
     setupUI();
     loadMetroData();
+    setupAudio();
+    playBackgroundMusic();
 }
 MainWindow::~MainWindow() {}
+
+
+void MainWindow::setupAudio()
+{
+    // 设置背景音乐
+    backgroundPlayer = new QMediaPlayer(this);
+    backgroundAudioOutput = new QAudioOutput(this);
+    backgroundPlayer->setAudioOutput(backgroundAudioOutput);
+    backgroundPlayer->setSource(QUrl::fromLocalFile("music/metro.mp3"));
+    backgroundAudioOutput->setVolume(0.5); // 设置音量 (0.0 - 1.0)
+    backgroundPlayer->setLoops(QMediaPlayer::Infinite); // 循环播放
+
+    // 设置到站提示音
+    arrivalPlayer = new QMediaPlayer(this);
+    arrivalAudioOutput = new QAudioOutput(this);
+    arrivalPlayer->setAudioOutput(arrivalAudioOutput);
+    arrivalPlayer->setSource(QUrl::fromLocalFile("music/daozhan.mp3"));
+    arrivalAudioOutput->setVolume(0.7); // 设置音量 (0.0 - 1.0)
+}
+
+
+void MainWindow::playBackgroundMusic()
+{
+    backgroundPlayer->play();
+}
+
+void MainWindow::playArrivalSound()
+{
+    // 暂停背景音乐
+    backgroundPlayer->pause();
+
+    // 播放到站提示音
+    arrivalPlayer->play();
+
+    // 当提示音播放完成后恢复背景音乐
+    connect(arrivalPlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
+        if (state == QMediaPlayer::StoppedState) {
+            backgroundPlayer->play();
+        }
+        });
+}
+
+void MainWindow::stopBackgroundMusic()
+{
+    backgroundPlayer->stop();
+}
 
 // MainWindow.cpp
 void MainWindow::setupUI() {
@@ -563,6 +611,7 @@ void MainWindow::updatePathGuide(const MetroPath& path) {
 
     guide += QString::fromUtf8("到达终点站: %1").arg(selectedToStation);
     pathGuideText->setPlainText(guide);
+    playArrivalSound();
 }
 
 void MainWindow::onClearClicked() {

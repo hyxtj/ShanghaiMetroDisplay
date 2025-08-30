@@ -19,6 +19,10 @@
 #include <QKeyEvent>
 #include "LineStationDialog.h"
 
+#include <QMediaPlayer>
+#include <QAudioOutput>
+
+
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -80,6 +84,16 @@ private:
 
     QPushButton* selectStartByLineButton;
     QPushButton* selectEndByLineButton;
+
+    QMediaPlayer* backgroundPlayer;
+    QMediaPlayer* arrivalPlayer;
+    QAudioOutput* backgroundAudioOutput;
+    QAudioOutput* arrivalAudioOutput;
+
+    void setupAudio();
+    void playBackgroundMusic();
+    void playArrivalSound();
+    void stopBackgroundMusic();
 };
 
 #endif // MAINWINDOW_H
