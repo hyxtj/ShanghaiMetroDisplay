@@ -335,3 +335,19 @@ bool MetroGraph::addConnection(const QString& station1, const QString& station2,
     qDebug() << "成功添加连接:" << station1 << "<->" << station2 << "线路:" << line;
     return true;
 }
+
+QMap<QString, QVector<QString>> MetroGraph::getLineStations() const {
+    QMap<QString, QVector<QString>> lineStations;
+
+    // 遍历所有连接，构建线路到站点的映射
+    for (const StationConnection& conn : connections) {
+        if (!lineStations[conn.line].contains(conn.station1)) {
+            lineStations[conn.line].append(conn.station1);
+        }
+        if (!lineStations[conn.line].contains(conn.station2)) {
+            lineStations[conn.line].append(conn.station2);
+        }
+    }
+
+    return lineStations;
+}

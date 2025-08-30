@@ -46,10 +46,12 @@ public:
     QVector<StationConnection> getConnections() const;
     StationConnection getConnection(const QString& station1, const QString& station2) const;
     bool hasStation(const QString& name) const; // 添加检查站点是否存在的方法
-    // 在MetroGraph.h中添加以下方法声明
+
     bool addLine(const MetroLine& line);
     bool addStation(const Station& station);
     bool addConnection(const QString& station1, const QString& station2, const QString& line, const QVector<QPoint>& viaPoints = QVector<QPoint>());
+
+    QMap<QString, QVector<QString>> getLineStations() const;
 
 private:
     QVector<MetroLine> lines;

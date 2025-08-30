@@ -220,15 +220,27 @@ void MainWindow::setupUI() {
     // 起点选择
     QGroupBox* fromGroup = new QGroupBox(QString::fromUtf8("起点站"), this);
     QVBoxLayout* fromLayout = new QVBoxLayout(fromGroup);
+
+    QHBoxLayout* fromButtonLayout = new QHBoxLayout();
     fromComboBox = new QComboBox(this);
-    fromLayout->addWidget(fromComboBox);
+    selectStartByLineButton = new QPushButton(QString::fromUtf8("按线路选择"), this);
+    fromButtonLayout->addWidget(fromComboBox);
+    fromButtonLayout->addWidget(selectStartByLineButton);
+    fromLayout->addLayout(fromButtonLayout);
+
     controlLayout->addWidget(fromGroup);
 
     // 终点选择
     QGroupBox* toGroup = new QGroupBox(QString::fromUtf8("终点站"), this);
     QVBoxLayout* toLayout = new QVBoxLayout(toGroup);
+
+    QHBoxLayout* toButtonLayout = new QHBoxLayout();
     toComboBox = new QComboBox(this);
-    toLayout->addWidget(toComboBox);
+    selectEndByLineButton = new QPushButton(QString::fromUtf8("按线路选择"), this);
+    toButtonLayout->addWidget(toComboBox);
+    toButtonLayout->addWidget(selectEndByLineButton);
+    toLayout->addLayout(toButtonLayout);
+
     controlLayout->addWidget(toGroup);
 
     // 策略选择
@@ -322,6 +334,8 @@ void MainWindow::setupUI() {
         this, &MainWindow::onStrategyChanged);
     connect(stationWidget, &StationWidget::positionSelected,
         this, &MainWindow::onAddStationAtPosition);
+    connect(selectStartByLineButton, &QPushButton::clicked, this, &MainWindow::onSelectStartByLine);
+    connect(selectEndByLineButton, &QPushButton::clicked, this, &MainWindow::onSelectEndByLine);
 
     statusBar = new QStatusBar(this);
     setStatusBar(statusBar);
@@ -340,6 +354,7 @@ void MainWindow::setupUI() {
     // 初始化状态栏
     updateStatusBar();
     mousePosLabel->setText("X: 0, Y: 0"); // 初始文本
+
 }
 
 void MainWindow::updateStatusBar() {
@@ -353,7 +368,9 @@ void MainWindow::onStrategyChanged(QAbstractButton* button) {
 
 void MainWindow::loadSortedStations() {
     // 读取拼音排序后的站点列表
-    QFile file("D:\\QT\\VS\\ShanghaiMetro1\\out\\build\\debug\\data\\sorted_stations.json");
+    QString basePath = QCoreApplication::applicationDirPath();
+    QString dataPath = basePath + "/data/";
+    QFile file(dataPath+"sorted_stations.json");
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "无法打开排序后的站点文件";
         // 使用原始顺序
@@ -384,7 +401,9 @@ void MainWindow::loadSortedStations() {
 
 // 修改loadMetroData方法，确保搜索框支持输入和自动补全
 void MainWindow::loadMetroData() {
-    if (metroGraph.loadFromJson(QString::fromUtf8("D:\\QT\\VS\\ShanghaiMetro1\\out\\build\\debug\\data\\metroInfo.json"))) {
+    QString basePath = QCoreApplication::applicationDirPath();
+    QString dataPath = basePath + "/data/";
+    if (metroGraph.loadFromJson(dataPath+"metroInfo.json")) {
         stationWidget->setMetroGraph(metroGraph);
 
         // 更新PathFinder中的图指针
@@ -563,7 +582,7 @@ void MainWindow::onClearClicked() {
     selectedToStation = "";
 }
 
-
+// MainWindow.cpp - 修改refreshUI方法
 void MainWindow::refreshUI() {
     // 更新下拉框
     fromComboBox->clear();
@@ -579,18 +598,36 @@ void MainWindow::refreshUI() {
         return collator.compare(a, b) < 0;
         });
 
+    // 添加站点到下拉框
     for (const QString& name : stationNames) {
         fromComboBox->addItem(name);
         toComboBox->addItem(name);
     }
+
+    // 更新自动补全
+    QStringList stationList;
+    for (const QString& name : stationNames) {
+        stationList << name;
+    }
+
+    QCompleter* fromCompleter = new QCompleter(stationList, this);
+    fromCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    fromCompleter->setFilterMode(Qt::MatchContains);
+    fromComboBox->setCompleter(fromCompleter);
+
+    QCompleter* toCompleter = new QCompleter(stationList, this);
+    toCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    toCompleter->setFilterMode(Qt::MatchContains);
+    toComboBox->setCompleter(toCompleter);
 
     // 更新地铁图
     stationWidget->setMetroGraph(metroGraph);
 
     // 更新路径查找器
     pathFinder.setGraph(&metroGraph);
-    updateStatusBar();
 
+    // 更新状态栏
+    updateStatusBar();
 }
 
 void MainWindow::onAddLineClicked() {
@@ -761,4 +798,22 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         stationWidget->setSelectionMode(false);
     }
     QMainWindow::keyPressEvent(event);
+}
+
+void MainWindow::onSelectStartByLine() {
+    LineStationDialog dialog(metroGraph, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString station = dialog.getSelectedStation();
+        fromComboBox->setCurrentText(station);
+        selectedFromStation = station;
+    }
+}
+
+void MainWindow::onSelectEndByLine() {
+    LineStationDialog dialog(metroGraph, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString station = dialog.getSelectedStation();
+        toComboBox->setCurrentText(station);
+        selectedToStation = station;
+    }
 }

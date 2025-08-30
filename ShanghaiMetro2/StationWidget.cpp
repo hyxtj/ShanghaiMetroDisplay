@@ -128,7 +128,7 @@ void StationWidget::drawLegend(QPainter& painter) {
 
     // 绘制图例背景
     painter.setPen(Qt::black);
-    painter.setBrush(QColor(0, 0,0, 100)); // 半透明黑色
+    painter.setBrush(QColor(0, 0,0, 50)); // 半透明黑色
     painter.drawRect(legendX, legendY, legendWidth, legendHeight);
 
     // 绘制每条线路的图例项

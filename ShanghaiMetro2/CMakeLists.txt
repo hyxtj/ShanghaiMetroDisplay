@@ -30,13 +30,15 @@ set(PROJECT_SOURCES
     AddLineDialog.cpp
     AddStationDialog.h
     AddStationDialog.cpp
+    LineStationDialog.h
+    LineStationDialog.cpp
 )
 
 qt_add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
-        WIN32_EXECUTABLE False
+        WIN32_EXECUTABLE True
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -44,5 +46,6 @@ target_link_libraries(${PROJECT_NAME}
         Qt::Core
         Qt::Gui
         Qt::Widgets
+        Qt6::Multimedia
 )
 

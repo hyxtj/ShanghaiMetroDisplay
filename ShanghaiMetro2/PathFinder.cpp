@@ -52,157 +52,6 @@ MetroPath PathFinder::findPath(const QString& from, const QString& to, SearchStr
     }
 }
 
-//MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to) {
-//    qDebug() << "开始搜索最少换乘路径从" << from << "到" << to;
-//
-//    // 检查graph指针是否有效
-//    if (graph == nullptr) {
-//        qDebug() << "错误: graph指针为空";
-//        return MetroPath();
-//    }
-//
-//    // 检查起点和终点是否存在
-//    if (!graph->hasStation(from)) {
-//        qDebug() << "错误: 起点" << from << "不存在";
-//        return MetroPath();
-//    }
-//    if (!graph->hasStation(to)) {
-//        qDebug() << "错误: 终点" << to << "不存在";
-//        return MetroPath();
-//    }
-//
-//    // 获取所有线路和换乘站信息
-//    QMap<QString, QVector<QString>> lineStations = getLineStations();
-//    QMap<QString, QVector<QString>> transferStations; // 每条线路的换乘站
-//
-//    // 找出每条线路的换乘站
-//    for (const auto& line : lineStations.keys()) {
-//        for (const QString& station : lineStations[line]) {
-//            Station stationInfo = graph->getStation(station);
-//            if (stationInfo.connectedStations.size() > 2) {
-//                // 如果一个站连接了超过2个站，可能是换乘站
-//                transferStations[line].append(station);
-//            }
-//        }
-//    }
-//
-//    // 构建线路图（将每条线路视为一个节点）
-//    QMap<QString, QVector<QPair<QString, int>>> lineGraph; // 线路图：线路 -> [(相邻线路, 权重)]
-//
-//    // 找出所有换乘站，并构建线路之间的连接
-//    for (const auto& line1 : lineStations.keys()) {
-//        for (const auto& line2 : lineStations.keys()) {
-//            if (line1 == line2) continue;
-//
-//            // 检查两条线路是否有共同的换乘站
-//            for (const QString& station : transferStations[line1]) {
-//                if (transferStations[line2].contains(station)) {
-//                    // 找到换乘站，在两条线路之间添加边
-//                    lineGraph[line1].append(qMakePair(line2, 1));
-//                    lineGraph[line2].append(qMakePair(line1, 1));
-//                    break;
-//                }
-//            }
-//        }
-//    }
-//
-//    // 找出起点和终点所在的线路
-//    QVector<QString> startLines = getStationLines()[from];
-//    QVector<QString> endLines = getStationLines()[to];
-//
-//    if (startLines.isEmpty() || endLines.isEmpty()) {
-//        qDebug() << "错误: 无法确定起点或终点所在的线路";
-//        return MetroPath();
-//    }
-//
-//    // 使用Dijkstra算法找到最少换乘路径
-//    QMap<QString, int> dist;
-//    QMap<QString, QString> prev;
-//    QSet<QString> visited;
-//
-//    // 初始化距离
-//    for (const auto& line : lineGraph.keys()) {
-//        dist[line] = std::numeric_limits<int>::max();
-//    }
-//
-//    // 将起点所在的所有线路加入队列
-//    std::priority_queue<std::pair<int, QString>,
-//        std::vector<std::pair<int, QString>>,
-//        std::greater<std::pair<int, QString>>> pq;
-//
-//    for (const QString& line : startLines) {
-//        dist[line] = 0;
-//        pq.push({ 0, line });
-//    }
-//
-//    // Dijkstra算法
-//    while (!pq.empty()) {
-//        auto [currentDist, currentLine] = pq.top();
-//        pq.pop();
-//
-//        if (visited.contains(currentLine)) continue;
-//        visited.insert(currentLine);
-//
-//        // 如果当前线路是终点所在的线路，找到路径
-//        if (endLines.contains(currentLine)) {
-//            break;
-//        }
-//
-//        // 遍历所有相邻线路
-//        for (const auto& [neighbor, weight] : lineGraph[currentLine]) {
-//            if (!visited.contains(neighbor)) {
-//                int newDist = currentDist + weight;
-//                if (newDist < dist[neighbor]) {
-//                    dist[neighbor] = newDist;
-//                    prev[neighbor] = currentLine;
-//                    pq.push({ newDist, neighbor });
-//                }
-//            }
-//        }
-//    }
-//
-//    // 找到最少换乘的线路路径
-//    QString bestEndLine;
-//    int minTransfers = std::numeric_limits<int>::max();
-//
-//    for (const QString& line : endLines) {
-//        if (dist[line] < minTransfers) {
-//            minTransfers = dist[line];
-//            bestEndLine = line;
-//        }
-//    }
-//
-//    if (minTransfers == std::numeric_limits<int>::max()) {
-//        qDebug() << "最少换乘算法未找到有效路径";
-//        return MetroPath();
-//    }
-//
-//    // 重构线路路径
-//    QVector<QString> linePath;
-//    QString currentLine = bestEndLine;
-//
-//    while (!currentLine.isEmpty()) {
-//        linePath.prepend(currentLine);
-//        currentLine = prev.value(currentLine, "");
-//    }
-//
-//    qDebug() << "线路路径:" << linePath;
-//
-//    // 将线路路径转换为站点路径
-//    QVector<QString> stationNames = convertLinePathToStationPath(linePath, from, to);
-//    if (stationNames.isEmpty()) {
-//        qDebug() << "错误: 无法将线路路径转换为站点路径";
-//        return MetroPath();
-//    }
-//
-//    MetroPath result = buildPath(stationNames);
-//    result.transferCount = minTransfers;
-//
-//    qDebug() << "最少换乘路径找到，换乘次数:" << result.transferCount;
-//
-//    return result;
-//}
-
 MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to) {
     qDebug() << "开始搜索最少换乘路径从" << from << "到" << to;
 
@@ -650,7 +499,7 @@ QString PathFinder::getLineBetweenStations(const QString& station1, const QStrin
     return "";
 }
 
-// 将线路路径转换为站点路径
+// PathFinder.cpp - 修改convertLinePathToStationPath方法
 //QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>& linePath,
 //    const QString& from,
 //    const QString& to) {
@@ -663,51 +512,36 @@ QString PathFinder::getLineBetweenStations(const QString& station1, const QStrin
 //
 //    // 获取线路到站点的映射
 //    QMap<QString, QVector<QString>> lineStations = getLineStations();
-//
-//    // 找出每条线路上的换乘站
-//    QMap<QString, QVector<QString>> transferStations;
-//    for (const auto& line : lineStations.keys()) {
-//        for (const QString& station : lineStations[line]) {
-//            Station stationInfo = graph->getStation(station);
-//            if (stationInfo.connectedStations.size() > 2) {
-//                // 如果一个站连接了超过2个站，可能是换乘站
-//                transferStations[line].append(station);
-//            }
-//        }
-//    }
-//
-//    // 找出起点和终点所在的线路
-//    QVector<QString> startLines = getStationLines()[from];
-//    QVector<QString> endLines = getStationLines()[to];
+//    QMap<QString, QVector<QString>> stationLines = getStationLines();
 //
 //    // 构建站点路径
 //    QVector<QString> stationPath;
 //    stationPath.append(from);
 //
-//    // 对于每条线路，找到最佳的换乘站
+//    // 对于每条线路，找到换乘站
 //    for (int i = 0; i < linePath.size() - 1; i++) {
 //        QString currentLine = linePath[i];
 //        QString nextLine = linePath[i + 1];
 //
-//        // 找出两条线路的共同换乘站
-//        QVector<QString> commonTransferStations;
-//        for (const QString& station : transferStations[currentLine]) {
-//            if (transferStations[nextLine].contains(station)) {
-//                commonTransferStations.append(station);
+//        // 找出两条线路的共同站点（换乘站）
+//        QVector<QString> commonStations;
+//        for (const QString& station : lineStations[currentLine]) {
+//            if (lineStations[nextLine].contains(station)) {
+//                commonStations.append(station);
 //            }
 //        }
 //
-//        if (commonTransferStations.isEmpty()) {
-//            qDebug() << "错误: 找不到线路" << currentLine << "和" << nextLine << "的共同换乘站";
+//        if (commonStations.isEmpty()) {
+//            qDebug() << "错误: 找不到线路" << currentLine << "和" << nextLine << "的共同站点";
 //            return QVector<QString>();
 //        }
 //
-//        // 选择最佳的换乘站（选择距离当前站点最近的）
-//        QString bestTransferStation = commonTransferStations.first();
+//        // 选择距离当前站点最近的换乘站
+//        QString bestTransferStation = commonStations.first();
 //        int minDistance = std::numeric_limits<int>::max();
 //
-//        for (const QString& station : commonTransferStations) {
-//            // 计算从当前站点到换乘站的距离
+//        for (const QString& station : commonStations) {
+//            // 计算从当前站点到换乘站的距离（站点数）
 //            QVector<QString> pathToStation = findPathOnLine(currentLine, stationPath.last(), station);
 //            if (!pathToStation.isEmpty() && pathToStation.size() < minDistance) {
 //                minDistance = pathToStation.size();
@@ -744,9 +578,7 @@ QString PathFinder::getLineBetweenStations(const QString& station1, const QStrin
 //    qDebug() << "转换后的站点路径:" << stationPath;
 //    return stationPath;
 //}
-//
 
-// PathFinder.cpp - 修改convertLinePathToStationPath方法
 QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>& linePath,
     const QString& from,
     const QString& to) {
@@ -827,7 +659,68 @@ QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>
 }
 
 // 在线路上找到两个站点之间的路径，考虑分支情况
+//QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& from, const QString& to) {
+//    // 获取线路上的所有站点
+//    QMap<QString, QVector<QString>> lineStations = getLineStations();
+//    QVector<QString> stationsOnLine = lineStations[line];
+//
+//    // 找出起点和终点在线路上的位置
+//    int fromIndex = stationsOnLine.indexOf(from);
+//    int toIndex = stationsOnLine.indexOf(to);
+//
+//    if (fromIndex == -1 || toIndex == -1) {
+//        qDebug() << "错误: 站点" << from << "或" << to << "不在线路" << line << "上";
+//        return QVector<QString>();
+//    }
+//
+//    // 确定方向（正向或反向）
+//    QVector<QString> path;
+//    if (fromIndex <= toIndex) {
+//        // 正向
+//        for (int i = fromIndex; i <= toIndex; i++) {
+//            path.append(stationsOnLine[i]);
+//        }
+//    }
+//    else {
+//        // 反向
+//        for (int i = fromIndex; i >= toIndex; i--) {
+//            path.append(stationsOnLine[i]);
+//        }
+//    }
+//
+//    // 检查路径中是否有分支点
+//    // 如果有分支点，确保选择正确的分支方向
+//    for (int i = 0; i < path.size(); i++) {
+//        QString station = path[i];
+//        Station stationInfo = graph->getStation(station);
+//
+//        // 如果站点有多个连接，可能是分支点
+//        if (stationInfo.connectedStations.size() > 2) {
+//            // 检查当前路径是否选择了正确的分支
+//            if (i + 1 < path.size()) {
+//                QString nextStation = path[i + 1];
+//
+//                // 检查下一个站点是否在当前站点的连接中
+//                if (!stationInfo.connectedStations.contains(nextStation)) {
+//                    qDebug() << "警告: 路径中可能存在错误的分支选择"
+//                        << station << "->" << nextStation;
+//
+//                    // 尝试找到正确的路径
+//                    QVector<QString> alternativePath = findAlternativePathOnLine(line, from, to, station);
+//                    if (!alternativePath.isEmpty()) {
+//                        return alternativePath;
+//                    }
+//                }
+//            }
+//        }
+//    }
+//
+//    return path;
+//}
+
 QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& from, const QString& to) {
+    qDebug() << "在线路" << line << "上查找从" << from << "到" << to << "的路径";
+
     // 获取线路上的所有站点
     QMap<QString, QVector<QString>> lineStations = getLineStations();
     QVector<QString> stationsOnLine = lineStations[line];
@@ -841,53 +734,86 @@ QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& 
         return QVector<QString>();
     }
 
-    // 确定方向（正向或反向）
-    QVector<QString> path;
-    if (fromIndex <= toIndex) {
-        // 正向
-        for (int i = fromIndex; i <= toIndex; i++) {
-            path.append(stationsOnLine[i]);
-        }
-    }
-    else {
-        // 反向
-        for (int i = fromIndex; i >= toIndex; i--) {
-            path.append(stationsOnLine[i]);
-        }
-    }
-
-    // 检查路径中是否有分支点
-    // 如果有分支点，确保选择正确的分支方向
-    for (int i = 0; i < path.size(); i++) {
-        QString station = path[i];
+    // 检查线路是否有分支
+    bool hasBranch = false;
+    for (const QString& station : stationsOnLine) {
         Station stationInfo = graph->getStation(station);
-
-        // 如果站点有多个连接，可能是分支点
         if (stationInfo.connectedStations.size() > 2) {
-            // 检查当前路径是否选择了正确的分支
-            if (i + 1 < path.size()) {
-                QString nextStation = path[i + 1];
+            hasBranch = true;
+            break;
+        }
+    }
 
-                // 检查下一个站点是否在当前站点的连接中
-                if (!stationInfo.connectedStations.contains(nextStation)) {
-                    qDebug() << "警告: 路径中可能存在错误的分支选择"
-                        << station << "->" << nextStation;
-
-                    // 尝试找到正确的路径
-                    QVector<QString> alternativePath = findAlternativePathOnLine(line, from, to, station);
-                    if (!alternativePath.isEmpty()) {
-                        return alternativePath;
-                    }
-                }
+    // 如果没有分支，直接返回简单路径
+    if (!hasBranch) {
+        QVector<QString> path;
+        if (fromIndex <= toIndex) {
+            // 正向
+            for (int i = fromIndex; i <= toIndex; i++) {
+                path.append(stationsOnLine[i]);
             }
         }
+        else {
+            // 反向
+            for (int i = fromIndex; i >= toIndex; i--) {
+                path.append(stationsOnLine[i]);
+            }
+        }
+        return path;
     }
 
-    return path;
+    // 对于有分支的线路，使用BFS找到路径
+    return findAlternativePathOnLine(line, from, to, "");
 }
 
 
+
 // 在线路上找到替代路径，处理分支情况
+//QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, const QString& from,
+//    const QString& to, const QString& branchPoint) {
+//    qDebug() << "尝试找到替代路径，处理分支:" << line << from << "->" << to << "分支点:" << branchPoint;
+//
+//    // 使用BFS在线路上找到从起点到终点的路径
+//    QMap<QString, QString> cameFrom;
+//    QSet<QString> visited;
+//    std::queue<QString> queue;
+//
+//    queue.push(from);
+//    visited.insert(from);
+//    cameFrom[from] = "";
+//
+//    while (!queue.empty()) {
+//        QString current = queue.front();
+//        queue.pop();
+//
+//        if (current == to) {
+//            // 重构路径
+//            QVector<QString> path;
+//            QString node = current;
+//            while (!node.isEmpty()) {
+//                path.prepend(node);
+//                node = cameFrom.value(node, "");
+//            }
+//            return path;
+//        }
+//
+//        Station stationInfo = graph->getStation(current);
+//
+//        // 只考虑在同一线路上的邻居
+//        for (const QString& neighbor : stationInfo.connectedStations) {
+//            QString neighborLine = getLineBetweenStations(current, neighbor);
+//            if (neighborLine == line && !visited.contains(neighbor)) {
+//                visited.insert(neighbor);
+//                cameFrom[neighbor] = current;
+//                queue.push(neighbor);
+//            }
+//        }
+//    }
+//
+//    qDebug() << "错误: 无法在线路" << line << "上找到从" << from << "到" << to << "的替代路径";
+//    return QVector<QString>();
+//}
+
 QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, const QString& from,
     const QString& to, const QString& branchPoint) {
     qDebug() << "尝试找到替代路径，处理分支:" << line << from << "->" << to << "分支点:" << branchPoint;
@@ -913,6 +839,7 @@ QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, cons
                 path.prepend(node);
                 node = cameFrom.value(node, "");
             }
+            qDebug() << "找到替代路径:" << path;
             return path;
         }
 
@@ -933,6 +860,91 @@ QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, cons
     return QVector<QString>();
 }
 
+
+
+//QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
+//    QMap<QString, QVector<QString>> lineStations;
+//
+//    // 遍历所有连接，构建线路到站点的映射
+//    for (const StationConnection& conn : graph->getConnections()) {
+//        if (!lineStations[conn.line].contains(conn.station1)) {
+//            lineStations[conn.line].append(conn.station1);
+//        }
+//        if (!lineStations[conn.line].contains(conn.station2)) {
+//            lineStations[conn.line].append(conn.station2);
+//        }
+//    }
+//
+//    // 对每条线路的站点进行排序（按照线路顺序）
+//    for (auto& line : lineStations.keys()) {
+//        // 找出线路的端点（连接数最少的站点）
+//        QVector<QString> endStations;
+//
+//        for (const QString& station : lineStations[line]) {
+//            Station stationInfo = graph->getStation(station);
+//            int connectionCount = stationInfo.connectedStations.size();
+//
+//            // 如果站点只有一个连接，或者是分支点，可能是端点
+//            if (connectionCount == 1 || connectionCount > 2) {
+//                endStations.append(station);
+//            }
+//        }
+//
+//        // 如果找不到端点，选择任意两个站点作为端点
+//        if (endStations.size() < 2) {
+//            for (const QString& station : lineStations[line]) {
+//                if (endStations.size() >= 2) break;
+//                if (!endStations.contains(station)) {
+//                    endStations.append(station);
+//                }
+//            }
+//        }
+//
+//        // 使用BFS从端点开始构建线路顺序
+//        QVector<QVector<QString>> possiblePaths;
+//
+//        // 尝试从每个端点开始构建路径
+//        for (const QString& endStation : endStations) {
+//            QVector<QString> path;
+//            QSet<QString> visited;
+//            std::queue<QString> queue;
+//
+//            queue.push(endStation);
+//            visited.insert(endStation);
+//
+//            while (!queue.empty()) {
+//                QString current = queue.front();
+//                queue.pop();
+//
+//                path.append(current);
+//
+//                Station stationInfo = graph->getStation(current);
+//                for (const QString& neighbor : stationInfo.connectedStations) {
+//                    if (!visited.contains(neighbor) && lineStations[line].contains(neighbor)) {
+//                        visited.insert(neighbor);
+//                        queue.push(neighbor);
+//                    }
+//                }
+//            }
+//
+//            possiblePaths.append(path);
+//        }
+//
+//        // 选择最长的路径作为线路顺序
+//        QVector<QString> longestPath;
+//        for (const QVector<QString>& path : possiblePaths) {
+//            if (path.size() > longestPath.size()) {
+//                longestPath = path;
+//            }
+//        }
+//
+//        // 更新线路的站点顺序
+//        lineStations[line] = longestPath;
+//    }
+//
+//    return lineStations;
+//}
+
 QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
     QMap<QString, QVector<QString>> lineStations;
 
@@ -948,69 +960,52 @@ QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
 
     // 对每条线路的站点进行排序（按照线路顺序）
     for (auto& line : lineStations.keys()) {
-        // 找出线路的端点（连接数最少的站点）
-        QVector<QString> endStations;
+        // 使用BFS从任意站点开始构建线路顺序
+        QVector<QString> sortedStations;
+        QSet<QString> visited;
+        std::queue<QString> queue;
 
+        // 找到端点（连接数为1的站点）
+        QString endStation;
         for (const QString& station : lineStations[line]) {
             Station stationInfo = graph->getStation(station);
-            int connectionCount = stationInfo.connectedStations.size();
-
-            // 如果站点只有一个连接，或者是分支点，可能是端点
-            if (connectionCount == 1 || connectionCount > 2) {
-                endStations.append(station);
-            }
-        }
-
-        // 如果找不到端点，选择任意两个站点作为端点
-        if (endStations.size() < 2) {
-            for (const QString& station : lineStations[line]) {
-                if (endStations.size() >= 2) break;
-                if (!endStations.contains(station)) {
-                    endStations.append(station);
+            int connectionCount = 0;
+            for (const QString& neighbor : stationInfo.connectedStations) {
+                if (getLineBetweenStations(station, neighbor) == line) {
+                    connectionCount++;
                 }
             }
-        }
-
-        // 使用BFS从端点开始构建线路顺序
-        QVector<QVector<QString>> possiblePaths;
-
-        // 尝试从每个端点开始构建路径
-        for (const QString& endStation : endStations) {
-            QVector<QString> path;
-            QSet<QString> visited;
-            std::queue<QString> queue;
-
-            queue.push(endStation);
-            visited.insert(endStation);
-
-            while (!queue.empty()) {
-                QString current = queue.front();
-                queue.pop();
-
-                path.append(current);
-
-                Station stationInfo = graph->getStation(current);
-                for (const QString& neighbor : stationInfo.connectedStations) {
-                    if (!visited.contains(neighbor) && lineStations[line].contains(neighbor)) {
-                        visited.insert(neighbor);
-                        queue.push(neighbor);
-                    }
-                }
+            if (connectionCount == 1) {
+                endStation = station;
+                break;
             }
-
-            possiblePaths.append(path);
         }
 
-        // 选择最长的路径作为线路顺序
-        QVector<QString> longestPath;
-        for (const QVector<QString>& path : possiblePaths) {
-            if (path.size() > longestPath.size()) {
-                longestPath = path;
+        // 如果没有找到端点，选择第一个站点
+        if (endStation.isEmpty()) {
+            endStation = lineStations[line].first();
+        }
+
+        queue.push(endStation);
+        visited.insert(endStation);
+
+        while (!queue.empty()) {
+            QString current = queue.front();
+            queue.pop();
+
+            sortedStations.append(current);
+
+            Station stationInfo = graph->getStation(current);
+            for (const QString& neighbor : stationInfo.connectedStations) {
+                if (getLineBetweenStations(current, neighbor) == line && !visited.contains(neighbor)) {
+                    visited.insert(neighbor);
+                    queue.push(neighbor);
+                }
             }
         }
 
         // 更新线路的站点顺序
-        lineStations[line] = longestPath;
+        lineStations[line] = sortedStations;
     }
 
     return lineStations;
