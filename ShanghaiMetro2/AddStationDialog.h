@@ -1,4 +1,4 @@
-#ifndef ADDSTATIONDIALOG_H
+Ôªø#ifndef ADDSTATIONDIALOG_H
 #define ADDSTATIONDIALOG_H
 
 #include <QDialog>
@@ -19,6 +19,9 @@ public:
     QString getStationType() const;
     QPushButton* selectPositionButton;
 
+protected:
+    void closeEvent(QCloseEvent* event);
+
 private:
     StationWidget* stationWidget;
 
@@ -28,7 +31,7 @@ private:
     QComboBox* tagCombo;
     QComboBox* typeCombo;
 
-    QMetaObject::Connection positionConnection; // ±£¥Ê–≈∫≈¡¨Ω”
+    QMetaObject::Connection positionConnection; // ‰øùÂ≠ò‰ø°Âè∑ËøûÊé•
 
     void setupUI();
 };

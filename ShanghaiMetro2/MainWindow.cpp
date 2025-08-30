@@ -320,6 +320,26 @@ void MainWindow::setupUI() {
     connect(stationWidget, &StationWidget::stationSelected, this, &MainWindow::onStationClicked);
     connect(strategyButtonGroup, QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
         this, &MainWindow::onStrategyChanged);
+    connect(stationWidget, &StationWidget::positionSelected,
+        this, &MainWindow::onAddStationAtPosition);
+
+    statusBar = new QStatusBar(this);
+    setStatusBar(statusBar);
+
+    // 添加状态信息
+    stationCountLabel = new QLabel(this);
+    lineCountLabel = new QLabel(this);
+    mousePosLabel = new QLabel(this); // 新增：鼠标位置标签
+
+    statusBar->addPermanentWidget(stationCountLabel);
+    statusBar->addPermanentWidget(lineCountLabel);
+    statusBar->addPermanentWidget(mousePosLabel); // 添加到状态栏
+    QLabel* hintLabel = new QLabel(QString::fromUtf8("提示: 右键点击地图空白处添加站点"), this);
+    statusBar->addWidget(hintLabel);
+
+    // 初始化状态栏
+    updateStatusBar();
+    mousePosLabel->setText("X: 0, Y: 0"); // 初始文本
 }
 
 void MainWindow::updateStatusBar() {
@@ -369,6 +389,9 @@ void MainWindow::loadMetroData() {
 
         // 更新PathFinder中的图指针
         pathFinder.setGraph(&metroGraph);
+
+        connect(stationWidget, &StationWidget::mousePositionChanged,
+            this, &MainWindow::onMousePositionChanged);
 
         // 获取所有站点名称
         QVector<QString> stationNames = metroGraph.getStationNames();
@@ -626,8 +649,13 @@ void MainWindow::onAddLineClicked() {
     }
 }
 
+// MainWindow.cpp - 修改onAddStationClicked方法
 void MainWindow::onAddStationClicked() {
     AddStationDialog dialog(stationWidget, this);
+
+    // 确保对话框居中显示
+    dialog.move(this->geometry().center() - dialog.rect().center());
+
     if (dialog.exec() == QDialog::Accepted) {
         // 获取站点信息
         QString name = dialog.getStationName();
@@ -656,4 +684,81 @@ void MainWindow::onAddStationClicked() {
                 QString::fromUtf8("无法添加站点: %1").arg(name));
         }
     }
+}
+
+void MainWindow::onMousePositionChanged(const QPoint& pos) {
+    mousePosLabel->setText(QString("X: %1, Y: %2").arg(pos.x()).arg(pos.y()));
+}
+
+
+void MainWindow::onAddStationAtPosition(const QPoint& position) {
+    // 创建简化的添加站点对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle(QString::fromUtf8("添加站点"));
+    dialog.setMinimumWidth(300);
+
+    QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+    // 站点名称输入
+    QHBoxLayout* nameLayout = new QHBoxLayout();
+    QLabel* nameLabel = new QLabel(QString::fromUtf8("站点名称:"), &dialog);
+    QLineEdit* nameEdit = new QLineEdit(&dialog);
+    nameLayout->addWidget(nameLabel);
+    nameLayout->addWidget(nameEdit);
+    layout->addLayout(nameLayout);
+
+    // 显示坐标信息（只读）
+    QHBoxLayout* posLayout = new QHBoxLayout();
+    QLabel* posLabel = new QLabel(QString::fromUtf8("位置坐标:"), &dialog);
+    QLabel* posValue = new QLabel(QString("X: %1, Y: %2").arg(position.x()).arg(position.y()), &dialog);
+    posLayout->addWidget(posLabel);
+    posLayout->addWidget(posValue);
+    layout->addLayout(posLayout);
+
+    // 按钮
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    QPushButton* okButton = new QPushButton(QString::fromUtf8("确定"), &dialog);
+    QPushButton* cancelButton = new QPushButton(QString::fromUtf8("取消"), &dialog);
+    buttonLayout->addWidget(okButton);
+    buttonLayout->addWidget(cancelButton);
+    layout->addLayout(buttonLayout);
+
+    // 连接信号
+    connect(okButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    connect(cancelButton, &QPushButton::clicked, &dialog, &QDialog::reject);
+
+    // 设置焦点到名称输入框
+    nameEdit->setFocus();
+
+    // 显示对话框
+    if (dialog.exec() == QDialog::Accepted && !nameEdit->text().isEmpty()) {
+        // 创建站点
+        Station station;
+        station.name = nameEdit->text();
+        station.graphPosition = position;
+        station.realPosition = QPointF(0, 0); // 暂时使用默认值
+        station.tag = "right"; // 默认标签位置
+        station.type = "normal"; // 默认类型
+
+        // 添加站点
+        if (metroGraph.addStation(station)) {
+            // 刷新UI
+            refreshUI();
+
+            QMessageBox::information(this, QString::fromUtf8("成功"),
+                QString::fromUtf8("已添加站点: %1").arg(station.name));
+        }
+        else {
+            QMessageBox::warning(this, QString::fromUtf8("警告"),
+                QString::fromUtf8("无法添加站点: %1").arg(station.name));
+        }
+    }
+}
+
+void MainWindow::keyPressEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_Escape && stationWidget) {
+        // ESC键退出选择模式
+        stationWidget->setSelectionMode(false);
+    }
+    QMainWindow::keyPressEvent(event);
 }

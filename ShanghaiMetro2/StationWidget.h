@@ -23,6 +23,9 @@ protected:
 signals:
     void stationSelected(const QString& stationName);
     void positionSelected(const QPoint& position); // 确保这个信号存在
+    void mousePositionChanged(const QPoint& graphPos); // 新增：鼠标位置变化信号
+public slots:
+    void setSelectionMode(bool enabled); // 新增：设置选择模式
 
 private:
     const MetroGraph* metroGraph;
@@ -45,6 +48,13 @@ private:
     QVector<StationConnection> getPathConnections() const;
 
     QColor getStationLineColor(const QString& stationName) const;
+
+    bool selectionMode; // 新增：是否处于选择模式
+    QPoint lastMousePos; // 新增：最后鼠标位置
+
+    QPoint rightClickPos; // 记录右键点击的位置
+    bool showRightClickFeedback; // 是否显示右键点击反馈
+    QTimer* feedbackTimer; // 反馈显示定时器
 };
 
 #endif // STATIONWIDGET_H

@@ -16,6 +16,7 @@
 #include "StationWidget.h"
 #include "MetroGraph.h"
 #include "PathFinder.h"
+#include <QKeyEvent>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -33,6 +34,11 @@ private slots:
     void onClearClicked();
     void onAddLineClicked();
     void onAddStationClicked();
+    void onMousePositionChanged(const QPoint& pos); // 新增：处理鼠标位置变化
+    void onAddStationAtPosition(const QPoint& position); // 新增：在指定位置添加站点
+
+protected:
+    void keyPressEvent(QKeyEvent* event);
 
 private:
     void setupUI();
@@ -41,6 +47,7 @@ private:
     void updatePathGuide(const MetroPath& path);
     void refreshUI();
     void updateStatusBar();
+
 
     MetroGraph metroGraph;
     PathFinder pathFinder;
@@ -65,6 +72,7 @@ private:
 
     QString selectedFromStation;
     QString selectedToStation;
+    QLabel* mousePosLabel; // 新增：显示鼠标位置的标签
 };
 
 #endif // MAINWINDOW_H

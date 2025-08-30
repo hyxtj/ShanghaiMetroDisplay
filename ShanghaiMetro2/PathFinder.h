@@ -65,6 +65,7 @@ private:
     QVector<QString> findPathOnLine(const QString& line, const QString& from, const QString& to);
     QVector<QString> findAlternativePathOnLine(const QString& line, const QString& from,
         const QString& to, const QString& branchPoint);
+
 };
 
 #endif // PATHFINDER_H

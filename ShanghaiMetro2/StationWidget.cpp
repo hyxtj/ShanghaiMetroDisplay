@@ -3,22 +3,34 @@
 #include <QWheelEvent>
 #include <cmath>
 #include <QPainterpath>
+#include <Qtimer>
 // StationWidget.cpp - 修改构造函数
 StationWidget::StationWidget(QWidget* parent)
-    : QWidget(parent), metroGraph(nullptr), scale(1.0), offset(0, 0), isDragging(false) {
+    : QWidget(parent), metroGraph(nullptr), scale(1.0), offset(0, 0),
+    isDragging(false), selectionMode(false), showRightClickFeedback(false) {
     setMouseTracking(true);
 
-    // 设置默认字体
-    QFont font("Microsoft YaHei");
-    if (font.exactMatch()) {
-        setFont(font);
+    // 创建定时器
+    feedbackTimer = new QTimer(this);
+    feedbackTimer->setSingleShot(true);
+    connect(feedbackTimer, &QTimer::timeout, this, [this]() {
+        showRightClickFeedback = false;
+        update();
+        });
+}
+
+void StationWidget::setSelectionMode(bool enabled) {
+    selectionMode = enabled;
+    if (enabled) {
+        setCursor(Qt::CrossCursor); // 设置为十字准星光标
     }
     else {
-        // 如果微软雅黑不可用，使用系统默认字体
-        font = QFont("Arial");
-        setFont(font);
+        setCursor(Qt::ArrowCursor); // 恢复默认光标
     }
+    update();
 }
+
+
 void StationWidget::setMetroGraph(const MetroGraph& graph) {
     metroGraph = &graph;
     stationPositions.clear();
@@ -79,6 +91,24 @@ void StationWidget::paintEvent(QPaintEvent* event) {
 
     // 绘制图例（在右下角）
     drawLegend(painter);
+
+    if (showRightClickFeedback) {
+        painter.save();
+        QPoint viewportPos = toViewport(rightClickPos);
+
+        // 绘制十字准星
+        painter.setPen(QPen(Qt::red, 2));
+        painter.drawLine(viewportPos.x() - 10, viewportPos.y(), viewportPos.x() + 10, viewportPos.y());
+        painter.drawLine(viewportPos.x(), viewportPos.y() - 10, viewportPos.x(), viewportPos.y() + 10);
+
+        // 绘制坐标文本
+        painter.setPen(Qt::red);
+        painter.setFont(QFont("Arial", 8));
+        painter.drawText(viewportPos + QPoint(15, -5),
+            QString("X: %1, Y: %2").arg(rightClickPos.x()).arg(rightClickPos.y()));
+
+        painter.restore();
+    }
 }
 
 // 绘制图例
@@ -454,7 +484,7 @@ void StationWidget::mousePressEvent(QMouseEvent* event) {
         QPoint scenePos = toGraph(event->pos());
 
         // 查找最近的站点
-        double minDist = 20.0 / scale; // 点击容差（考虑缩放）
+        double minDist = 20.0 / scale;
         QString selectedStation;
 
         for (const Station& station : metroGraph->getStations()) {
@@ -481,6 +511,10 @@ void StationWidget::mousePressEvent(QMouseEvent* event) {
 }
 
 void StationWidget::mouseMoveEvent(QMouseEvent* event) {
+    // 记录鼠标位置并发送信号
+    lastMousePos = toGraph(event->pos());
+    emit mousePositionChanged(lastMousePos);
+
     if (isDragging) {
         QPoint delta = event->pos() - lastDragPos;
         offset += delta;
@@ -490,6 +524,7 @@ void StationWidget::mouseMoveEvent(QMouseEvent* event) {
 
     QWidget::mouseMoveEvent(event);
 }
+
 
 void StationWidget::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton && isDragging) {

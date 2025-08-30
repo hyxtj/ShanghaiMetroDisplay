@@ -10,6 +10,12 @@
 AddStationDialog::AddStationDialog(StationWidget* stationWidget, QWidget* parent)
     : QDialog(parent), stationWidget(stationWidget) {
     setupUI();
+
+    // 确保对话框模态，这样当它隐藏时用户只能与地图交互
+    setModal(true);
+
+    // 确保对话框在显示时位于最前面
+    setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
 }
 
 void AddStationDialog::setupUI() {
@@ -67,24 +73,25 @@ void AddStationDialog::setupUI() {
 
     mainLayout->addLayout(buttonLayout);
 
-    // 使用lambda表达式连接信号，避免参数类型不匹配的问题
     connect(selectPositionButton, &QPushButton::clicked, this, [this]() {
-        // 隐藏对话框，让用户在地图上选择位置
-        hide();
+        // 启用选择模式
+        if (stationWidget) {
+            stationWidget->setSelectionMode(true);
 
-        // 使用lambda表达式连接站点的选择信号
-        positionConnection = connect(stationWidget, &StationWidget::positionSelected,
-            this, [this](const QPoint& position) {
-                // 断开信号连接
-                disconnect(positionConnection);
+            // 连接位置选择信号
+            positionConnection = connect(stationWidget, &StationWidget::positionSelected,
+                this, [this](const QPoint& position) {
+                    // 断开信号连接
+                    disconnect(positionConnection);
 
-                // 更新坐标
-                xSpin->setValue(position.x());
-                ySpin->setValue(position.y());
+                    // 退出选择模式
+                    stationWidget->setSelectionMode(false);
 
-                // 显示对话框
-                show();
-            });
+                    // 更新坐标
+                    xSpin->setValue(position.x());
+                    ySpin->setValue(position.y());
+                });
+        }
         });
 
     connect(okButton, &QPushButton::clicked, this, &QDialog::accept);
@@ -105,4 +112,10 @@ QString AddStationDialog::getStationTag() const {
 
 QString AddStationDialog::getStationType() const {
     return typeCombo->currentText();
+}
+void AddStationDialog::closeEvent(QCloseEvent* event) {
+    if (stationWidget) {
+        stationWidget->setSelectionMode(false);
+    }
+    QDialog::closeEvent(event);
 }

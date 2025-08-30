@@ -144,6 +144,7 @@ void AddLineDialog::setupUI() {
         });
 
 
+
     mainLayout->addWidget(connectionGroup);
 
     // 按钮
@@ -159,6 +160,8 @@ void AddLineDialog::setupUI() {
 
     connect(okButton, &QPushButton::clicked, this, &QDialog::accept);
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+
+
 
     // 初始状态
     onConnectionTypeChanged(0);
