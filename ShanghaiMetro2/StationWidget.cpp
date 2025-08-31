@@ -1,24 +1,44 @@
-﻿#include "StationWidget.h"
+﻿/***************************************************************************
+  文件名称：StationWidget.cpp
+  功    能：地铁站点显示部件的实现文件
+  说    明：实现地铁线路和站点的可视化显示，支持交互操作和路径高亮
+***************************************************************************/
+
+#include "StationWidget.h"
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <cmath>
 #include <QPainterpath>
 #include <Qtimer>
-// StationWidget.cpp - 修改构造函数
+/***************************************************************************
+  函数名称：StationWidget::StationWidget
+  功    能：构造函数，初始化站点显示部件
+  输入参数：parent - 父窗口指针
+  返 回 值：
+  说    明：初始化显示参数和交互状态
+***************************************************************************/
 StationWidget::StationWidget(QWidget* parent)
-    : QWidget(parent), metroGraph(nullptr), scale(1.0), offset(0, 0),
-    isDragging(false), selectionMode(false), showRightClickFeedback(false) {
+    : QWidget(parent), 
+    metroGraph(nullptr), scale(1.0)          , offset(0, 0),
+    isDragging(false)  , selectionMode(false), showRightClickFeedback(false) 
+{
     setMouseTracking(true);
 
-    // 创建定时器
+    /* 创建定时器*/
     feedbackTimer = new QTimer(this);
-    feedbackTimer->setSingleShot(true);
+    feedbackTimer ->setSingleShot(true);
     connect(feedbackTimer, &QTimer::timeout, this, [this]() {
         showRightClickFeedback = false;
         update();
-        });
+    });
 }
-
+/***************************************************************************
+  函数名称：StationWidget::setSelectionMode
+  功    能：设置选择模式
+  输入参数：bool enabled - 是否可以选择
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::setSelectionMode(bool enabled) {
     selectionMode = enabled;
     if (enabled) {
@@ -30,7 +50,13 @@ void StationWidget::setSelectionMode(bool enabled) {
     update();
 }
 
-
+/***************************************************************************
+  函数名称：StationWidget::setMetroGraph
+  功    能：设置地铁线路
+  输入参数：const MetroGraph graph - 地铁线路图
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::setMetroGraph(const MetroGraph& graph) {
     metroGraph = &graph;
     stationPositions.clear();
@@ -42,40 +68,54 @@ void StationWidget::setMetroGraph(const MetroGraph& graph) {
     update(); // 强制重绘
 }
 
+/***************************************************************************
+  函数名称：StationWidget::setPath
+  功    能：设置路径
+  输入参数：const MetroPath path - 路径信息
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::setPath(const MetroPath& path) {
     currentPath = path;
     update();
 }
 
+/***************************************************************************
+  函数名称：StationWidget::paintEvent
+  功    能：绘制事件处理函数
+  输入参数：QPaintEvent* event - 绘制事件指针
+  返 回 值：
+  说    明：负责绘制地铁线路、站点和路径高亮
+  ***************************************************************************/
 void StationWidget::paintEvent(QPaintEvent* event) {
     Q_UNUSED(event);
 
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // 绘制背景
+    /* 绘制背景*/
     painter.fillRect(rect(), QColor(240, 240, 240));
 
-    // 检查metroGraph指针是否有效
+    /* 检查metroGraph指针是否有效*/
     if (metroGraph == nullptr) {
         painter.drawText(rect(), Qt::AlignCenter, QString::fromUtf8("未加载地铁数据"));
         return;
     }
 
-    // 应用缩放和平移
+    /* 应用缩放和平移*/
     painter.save();
     painter.translate(offset);
     painter.scale(scale, scale);
 
-    // 首先绘制所有连接
+    /* 首先绘制所有连接*/
     for (const StationConnection& conn : metroGraph->getConnections()) {
         drawConnection(painter, conn, false);
     }
 
-    // 然后绘制路径（高亮显示）
+    /* 然后绘制路径（高亮显示）*/
     drawPath(painter);
 
-    // 最后绘制所有站点
+    /* 最后绘制所有站点*/
     for (const Station& station : metroGraph->getStations()) {
         bool isInPath = false;
         for (const PathSegment& segment : currentPath.segments) {
@@ -89,19 +129,19 @@ void StationWidget::paintEvent(QPaintEvent* event) {
 
     painter.restore();
 
-    // 绘制图例（在右下角）
+    /* 绘制图例（在右下角）*/
     drawLegend(painter);
 
     if (showRightClickFeedback) {
         painter.save();
         QPoint viewportPos = toViewport(rightClickPos);
 
-        // 绘制十字准星
+        /* 绘制十字准星*/
         painter.setPen(QPen(Qt::red, 2));
-        painter.drawLine(viewportPos.x() - 10, viewportPos.y(), viewportPos.x() + 10, viewportPos.y());
-        painter.drawLine(viewportPos.x(), viewportPos.y() - 10, viewportPos.x(), viewportPos.y() + 10);
+        painter.drawLine(viewportPos.x() - 10, viewportPos.y()     , viewportPos.x() + 10, viewportPos.y());
+        painter.drawLine(viewportPos.x()     , viewportPos.y() - 10, viewportPos.x()     , viewportPos.y() + 10);
 
-        // 绘制坐标文本
+        /* 绘制坐标文本*/
         painter.setPen(Qt::red);
         painter.setFont(QFont("Arial", 8));
         painter.drawText(viewportPos + QPoint(15, -5),
@@ -111,27 +151,34 @@ void StationWidget::paintEvent(QPaintEvent* event) {
     }
 }
 
-// 绘制图例
+/***************************************************************************
+  函数名称：StationWidget::drawLegend
+  功    能：绘制图例
+  输入参数：QPainter& painter - 绘图对象引用
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::drawLegend(QPainter& painter) {
-    if (metroGraph == nullptr) return;
+    if (metroGraph == nullptr) 
+        return;
     
 	int maxNameLength = 0;
 	for (const MetroLine& line : metroGraph->getLines()) {
 		maxNameLength = qMax(maxNameLength, line.name.length());
 	}
 
-    // 设置图例位置和大小
-    int legendWidth = maxNameLength*12 + 30;
+    /* 设置图例位置和大小*/
+    int legendWidth  = maxNameLength*12 + 30;
     int legendHeight = metroGraph->getLines().size() * 15;
-    int legendX = width() - legendWidth-5;
-    int legendY = height() - legendHeight -10;
+    int legendX      = width() - legendWidth-5;
+    int legendY      = height() - legendHeight -10;
 
-    // 绘制图例背景
+    /* 绘制图例背景*/
     painter.setPen(Qt::black);
     painter.setBrush(QColor(0, 0,0, 50)); // 半透明黑色
     painter.drawRect(legendX, legendY, legendWidth, legendHeight);
 
-    // 绘制每条线路的图例项
+    /* 绘制每条线路的图例项*/
     int yOffset = 15;
     for (const MetroLine& line : metroGraph->getLines()) {
 
@@ -142,7 +189,7 @@ void StationWidget::drawLegend(QPainter& painter) {
         painter.setPen(pen);
 		painter.drawLine(legendX + 10, legendY + yOffset + 1, legendX + 36, legendY + yOffset + 1);
 
-        // 绘制线路名称
+        /* 绘制线路名称*/
 		pen.setColor(Qt::black);
         pen.setWidth(3);
         painter.setPen(pen);
@@ -153,39 +200,47 @@ void StationWidget::drawLegend(QPainter& painter) {
     }
 }
 
-// StationWidget.cpp - 修改换乘站识别方法
+/***************************************************************************
+  函数名称：StationWidget::drawStation
+  功    能：绘制站点
+  输入参数：QPainter&      painter       - 绘图对象引用
+			const Station& station       - 站点信息
+			bool           isHighlighted - 是否高亮显示
+  返 回 值：
+  说    明：内置一个可以识别是否是换乘站的方法
+***************************************************************************/
 void StationWidget::drawStation(QPainter& painter, const Station& station, bool isHighlighted) {
     QPoint pos = getStationPosition(station);
 
-    // 识别换乘站：检查站点是否连接了多条线路
+    /* 识别换乘站：检查站点是否连接了多条线路*/
     bool isTransferStation = false;
     QSet<QString> connectedLines; // 使用集合存储连接的线路
 
-    // 获取站点连接的所有线路
+    /* 获取站点连接的所有线路*/
     for (const StationConnection& conn : metroGraph->getConnections()) {
         if (conn.station1 == station.name || conn.station2 == station.name) {
             connectedLines.insert(conn.line);
         }
     }
 
-    // 如果连接了多条线路，则是换乘站
+    /* 如果连接了多条线路，则是换乘站*/
     if (connectedLines.size() > 1) {
         isTransferStation = true;
     }
 
-    // 绘制站点
+    /* 绘制站点*/
     if (isTransferStation) {
-        // 换乘站 - 先绘制白色背景圆
+        /* 换乘站 - 先绘制白色背景圆*/
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(240, 240, 240)); // 使用与背景相同的颜色
         painter.drawEllipse(pos, 7, 7);
 
-        // 再绘制灰色圆圈
+        /* 再绘制灰色圆圈*/
         painter.setPen(QPen(Qt::gray, 2));
         painter.setBrush(Qt::NoBrush);
         painter.drawEllipse(pos, 6, 6);
 
-        // 绘制换乘标志（两个旋转箭头）
+        /* 绘制换乘标志（两个旋转箭头）*/
         painter.setPen(QPen(Qt::black, 1));
         QFont font = painter.font();
         font.setPointSize(6);
@@ -194,24 +249,24 @@ void StationWidget::drawStation(QPainter& painter, const Station& station, bool 
         painter.drawText(QRect(pos.x() - 4, pos.y() - 4, 8, 8), Qt::AlignCenter, "⇄");
     }
     else {
-        // 普通站 - 先绘制白色背景圆
+        /* 普通站 - 先绘制白色背景圆*/
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(240, 240, 240)); // 使用与背景相同的颜色
         painter.drawEllipse(pos, 6, 6);
 
-        // 再使用线路颜色的空心圆
+        /* 再使用线路颜色的空心圆*/
         QColor lineColor = getStationLineColor(station.name);
         painter.setPen(QPen(lineColor, 2));
         painter.setBrush(Qt::NoBrush);
         painter.drawEllipse(pos, 5, 5);
     }
 
-    // 绘制站点名称 - 使用黑色字体
+    /* 绘制站点名称 - 使用黑色字体*/
     QFont font("Microsoft YaHei", 8);
     painter.setFont(font);
     painter.setPen(Qt::black);
 
-    // 根据tag确定文本位置
+    /* 根据tag确定文本位置*/
     if (station.tag == QString::fromUtf8("left")) {
         painter.drawText(pos + QPoint(-60, 0), station.name);
     }
@@ -228,17 +283,25 @@ void StationWidget::drawStation(QPainter& painter, const Station& station, bool 
         painter.drawText(pos + QPoint(-45, -10), station.name);
     }
     else {
-        // 默认在右侧显示
+        /* 默认在右侧显示*/
         painter.drawText(pos + QPoint(10, 0), station.name);
     }
 }
 
-// StationWidget.cpp - 修改drawConnection方法
+/***************************************************************************
+  函数名称：StationWidget::drawConnection
+  功    能：绘制连接
+  输入参数：QPainter&                painter       - 绘图对象引用
+			const StationConnection& conn          - 连接信息
+			bool                     isHighlighted - 是否高亮显示
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::drawConnection(QPainter& painter, const StationConnection& conn, bool isHighlighted) {
     QPoint fromPos = getStationPosition(metroGraph->getStation(conn.station1));
-    QPoint toPos = getStationPosition(metroGraph->getStation(conn.station2));
+    QPoint toPos   = getStationPosition(metroGraph->getStation(conn.station2));
 
-    // 找到线路颜色
+    /* 找到线路颜色*/
     QColor lineColor = QColor(100, 100, 100, 150); // 默认灰色
     for (const MetroLine& metroLine : metroGraph->getLines()) {
         if (metroLine.name == conn.line) {
@@ -247,9 +310,9 @@ void StationWidget::drawConnection(QPainter& painter, const StationConnection& c
         }
     }
 
-    // 如果是高亮显示，使用更亮的颜色并加粗
+    /* 如果是高亮显示，使用更亮的颜色并加粗*/
     if (isHighlighted) {
-        // 绘制阴影效果
+        /* 绘制阴影效果*/
         painter.setPen(QPen(QColor(0, 0, 0, 100), 7, Qt::SolidLine, Qt::RoundCap));
         if (conn.viaPoints.isEmpty()) {
             painter.drawLine(fromPos, toPos);
@@ -264,36 +327,36 @@ void StationWidget::drawConnection(QPainter& painter, const StationConnection& c
             painter.drawPath(path);
         }
 
-        // 绘制高亮线路
+        /* 绘制高亮线路*/
         lineColor = QColor(255, 204, 0); // 使用金色高亮
         painter.setPen(QPen(lineColor, 5, Qt::SolidLine, Qt::RoundCap));
     }
     else {
-        // 非高亮连接使用半透明
+        /* 非高亮连接使用半透明*/
         lineColor.setAlpha(150);
         painter.setPen(QPen(lineColor, 3, Qt::SolidLine, Qt::RoundCap));
     }
 
     if (conn.viaPoints.isEmpty()) {
-        // 直接连接
+        /* 直接连接*/
         painter.drawLine(fromPos, toPos);
     }
     else {
-        // 有拐点的连接 - 绘制折线
+        /* 有拐点的连接 - 绘制折线*/
         QVector<QPoint> sortedViaPoints = conn.viaPoints;
 
-        // 计算每个转折点到起点的距离，用于排序
+        /* 计算每个转折点到起点的距离，用于排序*/
         auto distanceToStart = [fromPos](const QPoint& p) {
             return std::sqrt(std::pow(p.x() - fromPos.x(), 2) + std::pow(p.y() - fromPos.y(), 2));
-            };
+        };
 
-        // 按照距离起点的远近排序
+        /* 按照距离起点的远近排序*/
         std::sort(sortedViaPoints.begin(), sortedViaPoints.end(),
             [&](const QPoint& a, const QPoint& b) {
                 return distanceToStart(a) < distanceToStart(b);
-            });
+        });
 
-        // 绘制折线
+        /* 绘制折线*/
         QPainterPath path;
         path.moveTo(fromPos);
 
@@ -306,22 +369,29 @@ void StationWidget::drawConnection(QPainter& painter, const StationConnection& c
     }
 }
 
-// StationWidget.cpp - 修改drawPath方法
+/***************************************************************************
+  函数名称：StationWidget::drawPath
+  功    能：绘制路线
+  输入参数：
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::drawPath(QPainter& painter) {
-    if (currentPath.segments.isEmpty()) return;
+    if (currentPath.segments.isEmpty()) 
+        return;
 
-    // 设置高亮颜色 - 使用鲜艳的红色
+    /* 设置高亮颜色 - 使用鲜艳的红色*/
     QColor highlightColor(255, 50, 50);
-    QColor glowColor(255, 100, 100, 200); // 半透明的红色用于发光效果
+    QColor glowColor     (255, 100, 100, 200); // 半透明的红色用于发光效果
 
-    // 获取路径中的所有连接
+    /* 获取路径中的所有连接*/
     QVector<StationConnection> pathConnections = getPathConnections();
 
-    // 首先绘制发光效果（阴影）
+    /* 首先绘制发光效果（阴影）*/
     painter.setPen(QPen(glowColor, 7, Qt::SolidLine, Qt::RoundCap));
     for (const StationConnection& conn : pathConnections) {
         QPoint fromPos = getStationPosition(metroGraph->getStation(conn.station1));
-        QPoint toPos = getStationPosition(metroGraph->getStation(conn.station2));
+        QPoint toPos   = getStationPosition(metroGraph->getStation(conn.station2));
 
         if (conn.viaPoints.isEmpty()) {
             painter.drawLine(fromPos, toPos);
@@ -329,18 +399,18 @@ void StationWidget::drawPath(QPainter& painter) {
         else {
             QVector<QPoint> sortedViaPoints = conn.viaPoints;
 
-            // 计算每个转折点到起点的距离，用于排序
+            /* 计算每个转折点到起点的距离，用于排序*/
             auto distanceToStart = [fromPos](const QPoint& p) {
                 return std::sqrt(std::pow(p.x() - fromPos.x(), 2) + std::pow(p.y() - fromPos.y(), 2));
-                };
+            };
 
-            // 按照距离起点的远近排序
+            /* 按照距离起点的远近排序*/
             std::sort(sortedViaPoints.begin(), sortedViaPoints.end(),
                 [&](const QPoint& a, const QPoint& b) {
                     return distanceToStart(a) < distanceToStart(b);
-                });
+            });
 
-            // 绘制折线
+            /* 绘制折线*/
             QPainterPath path;
             path.moveTo(fromPos);
 
@@ -353,11 +423,11 @@ void StationWidget::drawPath(QPainter& painter) {
         }
     }
 
-    // 然后绘制高亮连接线
+     /* 然后绘制高亮连接线*/
     painter.setPen(QPen(highlightColor, 3, Qt::SolidLine, Qt::RoundCap));
     for (const StationConnection& conn : pathConnections) {
         QPoint fromPos = getStationPosition(metroGraph->getStation(conn.station1));
-        QPoint toPos = getStationPosition(metroGraph->getStation(conn.station2));
+        QPoint toPos   = getStationPosition(metroGraph->getStation(conn.station2));
 
         if (conn.viaPoints.isEmpty()) {
             painter.drawLine(fromPos, toPos);
@@ -365,18 +435,18 @@ void StationWidget::drawPath(QPainter& painter) {
         else {
             QVector<QPoint> sortedViaPoints = conn.viaPoints;
 
-            // 计算每个转折点到起点的距离，用于排序
+            /* 计算每个转折点到起点的距离，用于排序*/
             auto distanceToStart = [fromPos](const QPoint& p) {
                 return std::sqrt(std::pow(p.x() - fromPos.x(), 2) + std::pow(p.y() - fromPos.y(), 2));
-                };
+            };
 
-            // 按照距离起点的远近排序
+            /* 按照距离起点的远近排序*/
             std::sort(sortedViaPoints.begin(), sortedViaPoints.end(),
                 [&](const QPoint& a, const QPoint& b) {
                     return distanceToStart(a) < distanceToStart(b);
-                });
+            });
 
-            // 绘制折线
+            /* 绘制折线*/
             QPainterPath path;
             path.moveTo(fromPos);
 
@@ -389,16 +459,16 @@ void StationWidget::drawPath(QPainter& painter) {
         }
     }
 
-    // 高亮显示路径上的站点
+    /* 高亮显示路径上的站点*/
     for (const PathSegment& segment : currentPath.segments) {
         for (const QString& stationName : segment.stations) {
             if (metroGraph->hasStation(stationName)) {
                 Station station = metroGraph->getStation(stationName);
 
-                // 绘制高亮效果
+                /* 绘制高亮效果*/
                 QPoint pos = getStationPosition(station);
 
-                // 绘制发光效果
+                /* 绘制发光效果*/
                 QRadialGradient gradient(pos, 15);
                 gradient.setColorAt(0, QColor(255, 100, 100, 200));
                 gradient.setColorAt(1, QColor(255, 100, 100, 0));
@@ -407,17 +477,17 @@ void StationWidget::drawPath(QPainter& painter) {
                 painter.setBrush(gradient);
                 painter.drawEllipse(pos, 20, 20);
 
-                // 先绘制白色背景圆
+                /* 先绘制白色背景圆*/
                 painter.setPen(Qt::NoPen);
                 painter.setBrush(QColor(240, 240, 240)); // 使用与背景相同的颜色
                 painter.drawEllipse(pos, 6, 6);
 
-                // 绘制红色圆圈
+                /* 绘制红色圆圈*/
                 painter.setPen(QPen(highlightColor, 2));
                 painter.setBrush(Qt::NoBrush);
                 painter.drawEllipse(pos, 5, 5);
 
-                // 如果是换乘站，添加换乘标志
+                /* 如果是换乘站，添加换乘标志*/
                 bool isTransferStation = false;
                 if (station.type == "transfer" || station.type == "换乘站") {
                     isTransferStation = true;
@@ -430,7 +500,7 @@ void StationWidget::drawPath(QPainter& painter) {
                 }
 
                 if (isTransferStation) {
-                    // 绘制换乘标志
+                    /* 绘制换乘标志*/
                     painter.setPen(QPen(Qt::black, 1));
                     QFont font = painter.font();
                     font.setPointSize(6);
@@ -439,12 +509,12 @@ void StationWidget::drawPath(QPainter& painter) {
                     painter.drawText(QRect(pos.x() - 4, pos.y() - 4, 8, 8), Qt::AlignCenter, "⇄");
                 }
 
-                // 绘制站点名称
+                /* 绘制站点名称*/
                 QFont font("Microsoft YaHei", 8);
                 painter.setFont(font);
                 painter.setPen(Qt::black);
 
-                // 根据tag确定文本位置
+                /* 根据tag确定文本位置*/
                 if (station.tag == QString::fromUtf8("left")) {
                     painter.drawText(pos + QPoint(-60, 0), station.name);
                 }
@@ -468,10 +538,23 @@ void StationWidget::drawPath(QPainter& painter) {
     }
 }
 
+/***************************************************************************
+  函数名称：StationWidget::getStationPosition
+  功    能：给出站点位置
+  输入参数：const Station& station - 站点信息
+  返 回 值：QPoint - 站点位置
+  说    明：
+***************************************************************************/
 QPoint StationWidget::getStationPosition(const Station& station) const {
     return station.graphPosition;
 }
-
+/***************************************************************************
+  函数名称：StationWidget::mousePressEvent
+  功    能：处理鼠标按下事件
+  输入参数：QMouseEvent* event - 鼠标事件
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         // 开始拖拽
@@ -480,10 +563,10 @@ void StationWidget::mousePressEvent(QMouseEvent* event) {
         setCursor(Qt::ClosedHandCursor);
     }
     else if (event->button() == Qt::RightButton) {
-        // 将鼠标位置转换为图上的坐标
+        /* 将鼠标位置转换为图上的坐标*/
         QPoint scenePos = toGraph(event->pos());
 
-        // 查找最近的站点
+        /* 查找最近的站点*/
         double minDist = 20.0 / scale;
         QString selectedStation;
 
@@ -502,7 +585,7 @@ void StationWidget::mousePressEvent(QMouseEvent* event) {
             emit stationSelected(selectedStation);
         }
         else {
-            // 如果没有选中站点，发送位置选择信号
+            /* 如果没有选中站点，发送位置选择信号*/
             emit positionSelected(scenePos);
         }
     }
@@ -510,8 +593,15 @@ void StationWidget::mousePressEvent(QMouseEvent* event) {
     QWidget::mousePressEvent(event);
 }
 
+/***************************************************************************
+  函数名称：StationWidget::mouseMoveEvent
+  功    能：处理鼠标移动事件
+  输入参数：QMouseEvent* event - 鼠标事件
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::mouseMoveEvent(QMouseEvent* event) {
-    // 记录鼠标位置并发送信号
+    /* 记录鼠标位置并发送信号*/
     lastMousePos = toGraph(event->pos());
     emit mousePositionChanged(lastMousePos);
 
@@ -525,7 +615,13 @@ void StationWidget::mouseMoveEvent(QMouseEvent* event) {
     QWidget::mouseMoveEvent(event);
 }
 
-
+/***************************************************************************
+  函数名称：StationWidget::mouseReleaseEvent
+  功    能：处理鼠标释放事件
+  输入参数：QMouseEvent* event - 鼠标事件
+  返 回 值：
+  说    明：
+***************************************************************************/
 void StationWidget::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton && isDragging) {
         isDragging = false;
@@ -535,11 +631,18 @@ void StationWidget::mouseReleaseEvent(QMouseEvent* event) {
     QWidget::mouseReleaseEvent(event);
 }
 
+/***************************************************************************
+  函数名称：StationWidget::wheelEvent
+  功    能：处理滚轮事件
+  输入参数：QWheelEvent* event - 滚轮事件
+  返 回 值：
+  说    明：对图像进行拖拽缩放
+***************************************************************************/
 void StationWidget::wheelEvent(QWheelEvent* event) {
-    // 获取鼠标位置
+    /* 获取鼠标位置*/
     QPoint mousePos = event->position().toPoint();
 
-    // 计算缩放前的图坐标
+    /* 计算缩放前的图坐标*/
     QPoint graphPosBefore = toGraph(mousePos);
 
     // 计算缩放因子
@@ -548,16 +651,16 @@ void StationWidget::wheelEvent(QWheelEvent* event) {
         zoomFactor = 1.0 / zoomFactor;
     }
 
-    // 应用缩放
+    /* 应用缩放*/
     scale *= zoomFactor;
 
-    // 限制缩放范围
+    /* 限制缩放范围*/
     scale = qMax(0.1, qMin(scale, 5.0));
 
-    // 计算缩放后的图坐标
+    /* 计算缩放后的图坐标*/
     QPoint graphPosAfter = toGraph(mousePos);
 
-    // 调整偏移量以保持鼠标位置不变
+    /* 调整偏移量以保持鼠标位置不变*/
     offset += (graphPosAfter - graphPosBefore) * scale;
 
     update();
@@ -565,20 +668,41 @@ void StationWidget::wheelEvent(QWheelEvent* event) {
     event->accept();
 }
 
+/***************************************************************************
+  函数名称：StationWidget::toViewport
+  功    能：换算图上坐标到视口坐标
+  输入参数：const QPoint& graphPoint - 图上坐标
+  返 回 值：QPoint - 视口坐标
+  说    明：
+***************************************************************************/
 QPoint StationWidget::toViewport(const QPoint& graphPoint) const {
     return graphPoint * scale + offset;
 }
 
+/***************************************************************************
+  函数名称：StationWidget::toGraph
+  功    能：将视口坐标转换为图上坐标
+  输入参数：const QPoint& viewportPoint - 视口坐标
+  返 回 值：QPoint - 图上坐标
+  说    明：
+***************************************************************************/
 QPoint StationWidget::toGraph(const QPoint& viewportPoint) const {
     return (viewportPoint - offset) / scale;
 }
-
+/***************************************************************************
+  函数名称：StationWidget::getPathConnections
+  功    能：获取路径中的所有连接
+  输入参数：
+  返 回 值：QVector<StationConnection> - 路径连接列表
+  说    明：
+  ***************************************************************************/
 QVector<StationConnection> StationWidget::getPathConnections() const {
     QVector<StationConnection> pathConnections;
 
-    if (currentPath.segments.isEmpty()) return pathConnections;
+    if (currentPath.segments.isEmpty()) 
+        return pathConnections;
 
-    // 收集路径中所有相邻站点对
+    /* 收集路径中所有相邻站点对*/
     QVector<QPair<QString, QString>> stationPairs;
     for (const PathSegment& segment : currentPath.segments) {
         for (int i = 1; i < segment.stations.size(); i++) {
@@ -586,7 +710,7 @@ QVector<StationConnection> StationWidget::getPathConnections() const {
         }
     }
 
-    // 为每对站点找到对应的连接
+    /* 为每对站点找到对应的连接*/
     for (const auto& pair : stationPairs) {
         StationConnection conn = metroGraph->getConnection(pair.first, pair.second);
         if (!conn.station1.isEmpty()) {
@@ -596,7 +720,13 @@ QVector<StationConnection> StationWidget::getPathConnections() const {
 
     return pathConnections;
 }
-
+/***************************************************************************
+  函数名称：StationWidget::getStationLineColor
+  功    能：获取站点所属线路的颜色
+  输入参数：const QString& stationName - 站点名称
+  返 回 值：QColor - 线路颜色
+  说    明：
+  ***************************************************************************/
 QColor StationWidget::getStationLineColor(const QString& stationName) const {
     if (!metroGraph) return Qt::black;
 
@@ -614,3 +744,4 @@ QColor StationWidget::getStationLineColor(const QString& stationName) const {
 
     return Qt::black;
 }
+/*StationWidget.cpp*/

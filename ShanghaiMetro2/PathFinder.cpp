@@ -1,4 +1,10 @@
-﻿#include "PathFinder.h"
+﻿/***************************************************************************
+  文件名称：PathFinder.cpp
+  功    能：路径查找算法的实现文件
+  说    明：实现多种地铁路径搜索算法，包括最少换乘、最少站点和最短距离
+***************************************************************************/
+
+#include "PathFinder.h"
 #include <queue>
 #include <QSet>
 #include <QMap>
@@ -7,39 +13,64 @@
 #include <QDebug>
 #include <algorithm>
 
-// 用于优先队列的比较函数
+/*用于优先队列的比较函数*/
 struct ComparePair {
     bool operator()(const std::pair<int, int>& a, const std::pair<int, int>& b) const {
-        if (a.first != b.first) return a.first > b.first;
+        if (a.first != b.first) 
+            return a.first > b.first;
         return a.second > b.second;
     }
 };
 
+/***************************************************************************
+  函数名称：PathFinder::PathFinder
+  功    能：构造函数，初始化路径查找器
+  输入参数：const MetroGraph* graph - 地铁图数据指针
+  返 回 值：
+  说    明：初始化路径查找器并设置地铁图数据
+***************************************************************************/
 PathFinder::PathFinder(const MetroGraph* graph) : graph(graph) {}
 
+/***************************************************************************
+  函数名称：PathFinder::setGraph
+  功    能：设置地图信息
+  输入参数：const MetroGraph* graph - 地铁图数据指针
+  返 回 值：
+  说    明：
+***************************************************************************/
 void PathFinder::setGraph(const MetroGraph* graph) {
     this->graph = graph;
 }
 
+/***************************************************************************
+  函数名称：PathFinder::findPath
+  功    能：搜索从起点到终点的路径
+  输入参数：const QString& form     - 起点站点名称
+			const QString& to       - 终点站点名称
+			SearchStrategy strategy - 搜索策略
+  返 回 值：MetroPath - 搜索得到的地铁线路
+  说    明：
+***************************************************************************/
 MetroPath PathFinder::findPath(const QString& from, const QString& to, SearchStrategy strategy) {
     qDebug() << "开始搜索从" << from << "到" << to << "的策略:" << strategy;
 
-    // 检查graph指针是否有效
+    /* 检查graph指针是否有效*/
     if (graph == nullptr) {
         qDebug() << "错误: graph指针为空";
         return MetroPath();
     }
 
-    // 检查起点和终点是否存在
+    /* 检查起点和终点是否存在*/
     if (!graph->hasStation(from)) {
         qDebug() << "错误: 起点" << from << "不存在";
         return MetroPath();
     }
     if (!graph->hasStation(to)) {
-        qDebug() << "错误: 终点" << to << "不存在";
+        qDebug() << "错误: 终点" << to   << "不存在";
         return MetroPath();
     }
 
+    /* 根据策略选择搜索方法*/
     switch (strategy) {
         case MIN_TRANSFER:
             return findMinTransferPath(from, to);
@@ -52,32 +83,40 @@ MetroPath PathFinder::findPath(const QString& from, const QString& to, SearchStr
     }
 }
 
+/***************************************************************************
+  函数名称：PathFinder::findMinTransferPath
+  功    能：最少换乘策略
+  输入参数：const QString& from - 起点名称 
+			const QString& to   - 终点名称
+  返 回 值：MetroPath - 搜索得到的地铁线路
+  说    明：使用BFS算法辅助搜索
+***************************************************************************/
 MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to) {
     qDebug() << "开始搜索最少换乘路径从" << from << "到" << to;
 
-    // 检查graph指针是否有效
+    /* 检查graph指针是否有效*/
     if (graph == nullptr) {
         qDebug() << "错误: graph指针为空";
         return MetroPath();
     }
 
-    // 检查起点和终点是否存在
+    /* 检查起点和终点是否存在*/
     if (!graph->hasStation(from)) {
         qDebug() << "错误: 起点" << from << "不存在";
         return MetroPath();
     }
     if (!graph->hasStation(to)) {
-        qDebug() << "错误: 终点" << to << "不存在";
+        qDebug() << "错误: 终点" << to   << "不存在";
         return MetroPath();
     }
 
-    // 获取所有线路和站点信息
+    /* 获取所有线路和站点信息*/
     QMap<QString, QVector<QString>> lineStations = getLineStations();
     QMap<QString, QVector<QString>> stationLines = getStationLines();
 
-    // 找出起点和终点所在的线路
+    /* 找出起点和终点所在的线路*/
     QVector<QString> startLines = stationLines[from];
-    QVector<QString> endLines = stationLines[to];
+    QVector<QString> endLines   = stationLines[to];
 
     if (startLines.isEmpty() || endLines.isEmpty()) {
         qDebug() << "错误: 无法确定起点或终点所在的线路";
@@ -85,9 +124,9 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
     }
 
     qDebug() << "起点" << from << "所在线路:" << startLines;
-    qDebug() << "终点" << to << "所在线路:" << endLines;
+    qDebug() << "终点" << to   << "所在线路:" << endLines;
 
-    // 如果起点和终点在同一条线路上，直接返回这条线路上的路径
+    /* 如果起点和终点在同一条线路上，直接返回这条线路上的路径*/
     for (const QString& line : startLines) {
         if (endLines.contains(line)) {
             qDebug() << "起点和终点在同一线路" << line << "上";
@@ -100,19 +139,20 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
         }
     }
 
-    // 构建线路图（将每条线路视为一个节点）
+    /* 构建线路图（将每条线路视为一个节点）*/
     QMap<QString, QVector<QPair<QString, int>>> lineGraph; // 线路图：线路 -> [(相邻线路, 权重)]
 
-    // 找出所有换乘站，并构建线路之间的连接
+    /* 找出所有换乘站，并构建线路之间的连接*/
     for (const auto& line1 : lineStations.keys()) {
         for (const auto& line2 : lineStations.keys()) {
-            if (line1 == line2) continue;
+            if (line1 == line2) 
+                continue;
 
-            // 检查两条线路是否有共同的站点（换乘站）
+            /* 检查两条线路是否有共同的站点（换乘站）*/
             for (const QString& station : lineStations[line1]) {
                 if (lineStations[line2].contains(station)) {
-                    // 找到换乘站，在两条线路之间添加边
-                    // 检查是否已存在连接
+                    /* 找到换乘站，在两条线路之间添加边*/
+                    /* 检查是否已存在连接*/
                     bool exists = false;
                     for (const auto& pair : lineGraph[line1]) {
                         if (pair.first == line2) {
@@ -131,17 +171,17 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
         }
     }
 
-    // 使用BFS找到最少换乘路径
-    QMap<QString, int> dist;
+    /* 使用BFS找到最少换乘路径*/
+    QMap<QString, int>     dist;
     QMap<QString, QString> prev;
-    QSet<QString> visited;
+    QSet<QString>          visited;
 
-    // 初始化距离
+    /* 初始化距离*/
     for (const auto& line : lineGraph.keys()) {
         dist[line] = std::numeric_limits<int>::max();
     }
 
-    // 将起点所在的所有线路加入队列
+    /* 将起点所在的所有线路加入队列*/
     std::queue<QString> q;
 
     for (const QString& line : startLines) {
@@ -150,17 +190,17 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
         visited.insert(line);
     }
 
-    // BFS算法
+    /* BFS算法*/
     while (!q.empty()) {
         QString currentLine = q.front();
         q.pop();
 
-        // 如果当前线路是终点所在的线路，找到路径
+        /* 如果当前线路是终点所在的线路，找到路径*/
         if (endLines.contains(currentLine)) {
             break;
         }
 
-        // 遍历所有相邻线路
+        /* 遍历所有相邻线路*/
         for (const auto& [neighbor, weight] : lineGraph[currentLine]) {
             if (!visited.contains(neighbor)) {
                 dist[neighbor] = dist[currentLine] + weight;
@@ -171,14 +211,14 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
         }
     }
 
-    // 找到最少换乘的线路路径
+    /* 找到最少换乘的线路路径*/
     QString bestEndLine;
     int minTransfers = std::numeric_limits<int>::max();
 
     for (const QString& line : endLines) {
         if (dist[line] < minTransfers) {
             minTransfers = dist[line];
-            bestEndLine = line;
+            bestEndLine  = line;
         }
     }
 
@@ -189,7 +229,7 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
         return findMinStationsPath(from, to);
     }
 
-    // 重构线路路径
+    /* 重构线路路径*/
     QVector<QString> linePath;
     QString currentLine = bestEndLine;
 
@@ -200,7 +240,7 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
 
     qDebug() << "线路路径:" << linePath;
 
-    // 将线路路径转换为站点路径
+    /* 将线路路径转换为站点路径*/
     QVector<QString> stationNames = convertLinePathToStationPath(linePath, from, to);
     if (stationNames.isEmpty()) {
         qDebug() << "错误: 无法将线路路径转换为站点路径";
@@ -217,10 +257,17 @@ MetroPath PathFinder::findMinTransferPath(const QString& from, const QString& to
     return result;
 }
 
+/***************************************************************************
+  函数名称：PathFinder::getStationLines
+  功    能：获取站点到线路的映射
+  输入参数：
+  返 回 值：QMap<Qstring,QVector<QString>> - 站点到线路的映射
+  说    明：
+***************************************************************************/
 QMap<QString, QVector<QString>> PathFinder::getStationLines() const {
     QMap<QString, QVector<QString>> stationLines;
 
-    // 遍历所有连接，构建站点到线路的映射
+    /* 遍历所有连接，构建站点到线路的映射*/
     for (const StationConnection& conn : graph->getConnections()) {
         if (!stationLines[conn.station1].contains(conn.line)) {
             stationLines[conn.station1].append(conn.line);
@@ -232,37 +279,61 @@ QMap<QString, QVector<QString>> PathFinder::getStationLines() const {
 
     return stationLines;
 }
+
+/***************************************************************************
+  函数名称：PathFinder::findMinStationsPath
+  功    能：最少站点策略
+  输入参数：const QString& from - 起点名称
+			const QString& to   - 终点名称
+  返 回 值：MetroPath - 搜索得到的地铁线路
+  说    明：使用BFS算法辅助搜索
+  ***************************************************************************/
 MetroPath PathFinder::findMinStationsPath(const QString& from, const QString& to) {
     qDebug() << "开始搜索最少站点路径从" << from << "到" << to;
 
-    // 使用BFS找到最短路径（站点数最少）
+    /* 使用BFS找到最短路径（站点数最少）*/
     QVector<QString> stationNames = bfsShortestPath(from, to);
-    MetroPath path = buildPath(stationNames);
+    MetroPath        path         = buildPath(stationNames);
 
     qDebug() << "最少站点路径找到，站点数:" << path.stationCount;
     return path;
 }
 
+/***************************************************************************
+  函数名称：PathFinder::findMinDistancePath
+  功    能：最短距离策略
+  输入参数：const QString& from - 起点名称
+			const QString& to   - 终点名称
+  返 回 值：MetroPath - 搜索得到的地铁线路
+  说    明：使用Dijkstra算法辅助搜索
+  ***************************************************************************/
 MetroPath PathFinder::findMinDistancePath(const QString& from, const QString& to) {
     qDebug() << "开始搜索最短距离路径从" << from << "到" << to;
 
-    // 使用Dijkstra算法找到最短路径（距离最短）
+    /* 使用Dijkstra算法找到最短路径（距离最短）*/
     QVector<QString> stationNames = dijkstraShortestPath(from, to);
-    MetroPath path = buildPath(stationNames);
+    MetroPath        path         = buildPath(stationNames);
 
     qDebug() << "最短距离路径找到，总距离:" << path.totalDistance;
     return path;
 }
 
-// 修改Dijkstra算法，移除weights参数
+/***************************************************************************
+  函数名称：PathFinder::dijkstraShortestPath
+  功    能：Dijkstra算法实现最短路径搜索
+  输入参数：const QString& from - 起点名称
+			const QString& to   - 终点名称
+  返 回 值：QVector<QString> - 搜索得到的站点名称列表
+  说    明：
+  ***************************************************************************/
 QVector<QString> PathFinder::dijkstraShortestPath(const QString& from, const QString& to) {
     qDebug() << "开始Dijkstra搜索从" << from << "到" << to;
 
-    QMap<QString, double> dist;
+    QMap<QString, double>  dist;
     QMap<QString, QString> prev;
-    QSet<QString> unvisited;
+    QSet<QString>          unvisited;
 
-    // 初始化
+    /* 初始化*/
     QVector<QString> allStations = graph->getStationNames();
     for (const QString& station : allStations) {
         dist[station] = std::numeric_limits<double>::max();
@@ -272,7 +343,7 @@ QVector<QString> PathFinder::dijkstraShortestPath(const QString& from, const QSt
     dist[from] = 0;
 
     while (!unvisited.isEmpty()) {
-        // 找到未访问节点中距离最小的
+        /* 找到未访问节点中距离最小的*/
         QString current;
         double minDist = std::numeric_limits<double>::max();
         for (const QString& station : unvisited) {
@@ -292,7 +363,7 @@ QVector<QString> PathFinder::dijkstraShortestPath(const QString& from, const QSt
 
         unvisited.remove(current);
 
-        // 更新邻居节点的距离
+        /* 更新邻居节点的距离*/
         Station station = graph->getStation(current);
         for (const QString& neighbor : station.connectedStations) {
             if (unvisited.contains(neighbor)) {
@@ -305,7 +376,7 @@ QVector<QString> PathFinder::dijkstraShortestPath(const QString& from, const QSt
         }
     }
 
-    // 重构路径
+    /* 重构路径*/
     QVector<QString> path;
     QString current = to;
     while (!current.isEmpty()) {
@@ -313,7 +384,7 @@ QVector<QString> PathFinder::dijkstraShortestPath(const QString& from, const QSt
         current = prev.value(current, "");
     }
 
-    // 检查是否找到了有效路径
+    /* 检查是否找到了有效路径*/
     if (path.size() < 2 || path.first() != from) {
         qDebug() << "Dijkstra未找到有效路径";
         return QVector<QString>();
@@ -322,24 +393,31 @@ QVector<QString> PathFinder::dijkstraShortestPath(const QString& from, const QSt
     qDebug() << "Dijkstra找到路径:" << path;
     return path;
 }
-
+/***************************************************************************
+  函数名称：PathFinder::bfsShortestPath
+  功    能：BFS算法实现最短路径搜索
+  输入参数：const QString& from - 起点名称
+			const QString& to   - 终点名称
+  返 回 值：QVector<QString> - 搜索得到的站点名称列表
+  说    明：
+  ***************************************************************************/
 QVector<QString> PathFinder::bfsShortestPath(const QString& from, const QString& to) {
     qDebug() << "开始BFS搜索从" << from << "到" << to;
 
-    // 检查起点和终点是否存在
+    /* 检查起点和终点是否存在*/
     if (!graph->hasStation(from)) {
         qDebug() << "错误: 起点" << from << "不存在";
         return QVector<QString>();
     }
     if (!graph->hasStation(to)) {
-        qDebug() << "错误: 终点" << to << "不存在";
+        qDebug() << "错误: 终点" << to   << "不存在";
         return QVector<QString>();
     }
 
-    // 使用BFS找到最短路径
+    /* 使用BFS找到最短路径*/
     QMap<QString, QString> cameFrom;
-    QSet<QString> visited;
-    std::queue<QString> queue;
+    QSet<QString>          visited;
+    std::queue<QString>    queue;
 
     queue.push(from);
     visited.insert(from);
@@ -350,7 +428,7 @@ QVector<QString> PathFinder::bfsShortestPath(const QString& from, const QString&
         queue.pop();
 
         if (current == to) {
-            // 重构路径
+            /* 重构路径*/
             QVector<QString> path;
             QString node = current;
             while (!node.isEmpty()) {
@@ -363,7 +441,7 @@ QVector<QString> PathFinder::bfsShortestPath(const QString& from, const QString&
 
         Station station = graph->getStation(current);
 
-        // 按照某种顺序处理邻居，例如按名称排序以确保一致性
+        /* 按照某种顺序处理邻居，例如按名称排序以确保一致性*/
         QVector<QString> neighbors = station.connectedStations;
         std::sort(neighbors.begin(), neighbors.end());
 
@@ -380,12 +458,17 @@ QVector<QString> PathFinder::bfsShortestPath(const QString& from, const QString&
     return QVector<QString>();
 }
 
-
-// 修改路径构建函数
+/***************************************************************************
+  函数名称：PathFinder::buildPath
+  功    能：从站点名称列表构建完整路径信息
+  输入参数：const QVector<QString>& stationNames - 站点名称列表
+  返 回 值：
+  说    明：
+***************************************************************************/
 MetroPath PathFinder::buildPath(const QVector<QString>& stationNames) {
     MetroPath path;
     path.transferCount = 0;
-    path.stationCount = 0;
+    path.stationCount  = 0;
     path.totalDistance = 0;
 
     if (stationNames.size() < 2) {
@@ -395,23 +478,23 @@ MetroPath PathFinder::buildPath(const QVector<QString>& stationNames) {
 
     path.stationCount = stationNames.size();
 
-    // 构建路径段
+    /* 构建路径段*/
     PathSegment currentSegment;
     currentSegment.from = stationNames.first();
     currentSegment.stations.append(stationNames.first());
 
     for (int i = 1; i < stationNames.size(); i++) {
         QString currentStation = stationNames[i];
-        QString prevStation = stationNames[i - 1];
+        QString prevStation    = stationNames[i - 1];
 
-        // 计算距离
+        /* 计算距离*/
         path.totalDistance += calculateDistance(prevStation, currentStation);
 
         QString line = getLineBetweenStations(prevStation, currentStation);
 
         if (line.isEmpty()) {
             qDebug() << "警告: 站点" << prevStation << "和" << currentStation << "之间没有线路信息";
-            // 尝试使用前一段的线路
+            /* 尝试使用前一段的线路*/
             if (!currentSegment.line.isEmpty()) {
                 line = currentSegment.line;
                 qDebug() << "使用前一段的线路:" << line;
@@ -423,7 +506,7 @@ MetroPath PathFinder::buildPath(const QVector<QString>& stationNames) {
 
         if (currentSegment.line.isEmpty()) {
             currentSegment.line = line;
-            currentSegment.to = currentStation;
+            currentSegment.to   = currentStation;
             currentSegment.stations.append(currentStation);
         }
         else if (currentSegment.line == line) {
@@ -435,10 +518,10 @@ MetroPath PathFinder::buildPath(const QVector<QString>& stationNames) {
             path.segments.append(currentSegment);
             path.transferCount++;
 
-            currentSegment = PathSegment();
+            currentSegment      = PathSegment();
             currentSegment.line = line;
             currentSegment.from = prevStation; // 换乘站
-            currentSegment.to = currentStation;
+            currentSegment.to   = currentStation;
             currentSegment.stations.append(prevStation);
             currentSegment.stations.append(currentStation);
         }
@@ -452,27 +535,36 @@ MetroPath PathFinder::buildPath(const QVector<QString>& stationNames) {
 
     return path;
 }
-// 修改距离计算函数
+/***************************************************************************
+  函数名称：PathFinder::calculateDistance
+  功    能：计算两个站点之间的距离
+  输入参数：const QString& station1 - 站点名称1 
+            const QString& station2 - 站点名称2
+  返 回 值：double 两个站点之间的距离
+  说    明：
+***************************************************************************/
 double PathFinder::calculateDistance(const QString& station1, const QString& station2) {
     Station s1 = graph->getStation(station1);
     Station s2 = graph->getStation(station2);
 
-    // 检查站点是否存在
+    /* 检查站点是否存在*/
     if (s1.name.isEmpty() || s2.name.isEmpty()) {
         qDebug() << "警告: 计算距离时站点不存在";
         return 1.0; // 返回默认距离
     }
 
-    // 使用真实坐标计算距离（简单的欧几里得距离）
-    double dx = s1.realPosition.x() - s2.realPosition.x();
-    double dy = s1.realPosition.y() - s2.realPosition.y();
+    /* 使用真实坐标计算距离（简单的欧几里得距离）*/
+    double dx       = s1.realPosition.x() - s2.realPosition.x();
+    double dy       = s1.realPosition.y() - s2.realPosition.y();
     double distance = std::sqrt(dx * dx + dy * dy);
 
-    // 将经纬度距离转换为近似公里数
-    // 1度纬度约111公里，1度经度约111*cos(纬度)公里
-    // 上海纬度约31度，所以1度经度约111*cos(31°) ≈ 95公里
-    double latToKm = 111.0;
-    double lonToKm = 111.0 * std::cos(31.0 * M_PI / 180.0);
+    /*
+      将经纬度距离转换为近似公里数
+      1度纬度约111公里，1度经度约111*cos(纬度)公里
+      上海纬度约31度，所以1度经度约111*cos(31°) ≈ 95公里
+    */
+    double latToKm    = 111.0;
+    double lonToKm    = 111.0 * std::cos(31.0 * M_PI / 180.0);
 
     double distanceKm = std::sqrt(std::pow(dx * lonToKm, 2) + std::pow(dy * latToKm, 2));
 
@@ -481,107 +573,38 @@ double PathFinder::calculateDistance(const QString& station1, const QString& sta
     return distanceKm;
 }
 
+/***************************************************************************
+  函数名称：PathFinder::getLineBetweenStations
+  功    能：查找两个站点之间的线路
+  输入参数：const QString& station1 - 站点名称1
+			const QString& station2 - 站点名称2
+  返 回 值：QString - 连接两个站点的线路名称
+  说    明：
+***************************************************************************/
 QString PathFinder::getLineBetweenStations(const QString& station1, const QString& station2)const {
     StationConnection conn = graph->getConnection(station1, station2);
     if (!conn.line.isEmpty()) {
         return conn.line;
     }
 
-    // 如果直接连接不存在，尝试反向查找
+    /* 如果直接连接不存在，尝试反向查找*/
     conn = graph->getConnection(station2, station1);
     if (!conn.line.isEmpty()) {
         return conn.line;
     }
-
-    // 如果还是没有找到，尝试查找两个站点之间的间接连接
-    // 这可能需要更复杂的算法，但为了简单起见，我们返回空字符串
     qDebug() << "警告: 无法找到站点" << station1 << "和" << station2 << "之间的线路";
     return "";
 }
-
-// PathFinder.cpp - 修改convertLinePathToStationPath方法
-//QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>& linePath,
-//    const QString& from,
-//    const QString& to) {
-//    qDebug() << "将线路路径转换为站点路径:" << linePath;
-//
-//    if (linePath.isEmpty()) {
-//        qDebug() << "错误: 线路路径为空";
-//        return QVector<QString>();
-//    }
-//
-//    // 获取线路到站点的映射
-//    QMap<QString, QVector<QString>> lineStations = getLineStations();
-//    QMap<QString, QVector<QString>> stationLines = getStationLines();
-//
-//    // 构建站点路径
-//    QVector<QString> stationPath;
-//    stationPath.append(from);
-//
-//    // 对于每条线路，找到换乘站
-//    for (int i = 0; i < linePath.size() - 1; i++) {
-//        QString currentLine = linePath[i];
-//        QString nextLine = linePath[i + 1];
-//
-//        // 找出两条线路的共同站点（换乘站）
-//        QVector<QString> commonStations;
-//        for (const QString& station : lineStations[currentLine]) {
-//            if (lineStations[nextLine].contains(station)) {
-//                commonStations.append(station);
-//            }
-//        }
-//
-//        if (commonStations.isEmpty()) {
-//            qDebug() << "错误: 找不到线路" << currentLine << "和" << nextLine << "的共同站点";
-//            return QVector<QString>();
-//        }
-//
-//        // 选择距离当前站点最近的换乘站
-//        QString bestTransferStation = commonStations.first();
-//        int minDistance = std::numeric_limits<int>::max();
-//
-//        for (const QString& station : commonStations) {
-//            // 计算从当前站点到换乘站的距离（站点数）
-//            QVector<QString> pathToStation = findPathOnLine(currentLine, stationPath.last(), station);
-//            if (!pathToStation.isEmpty() && pathToStation.size() < minDistance) {
-//                minDistance = pathToStation.size();
-//                bestTransferStation = station;
-//            }
-//        }
-//
-//        // 在当前线路上找到从当前站点到换乘站的路径
-//        QVector<QString> pathOnCurrentLine = findPathOnLine(currentLine, stationPath.last(), bestTransferStation);
-//        if (pathOnCurrentLine.isEmpty()) {
-//            qDebug() << "错误: 无法在线路" << currentLine << "上找到从" << stationPath.last() << "到" << bestTransferStation << "的路径";
-//            return QVector<QString>();
-//        }
-//
-//        // 添加到站点路径（去掉第一个站点，因为它已经在路径中）
-//        for (int j = 1; j < pathOnCurrentLine.size(); j++) {
-//            stationPath.append(pathOnCurrentLine[j]);
-//        }
-//    }
-//
-//    // 在最后一条线路上找到从当前站点到终点的路径
-//    QString lastLine = linePath.last();
-//    QVector<QString> pathOnLastLine = findPathOnLine(lastLine, stationPath.last(), to);
-//    if (pathOnLastLine.isEmpty()) {
-//        qDebug() << "错误: 无法在线路" << lastLine << "上找到从" << stationPath.last() << "到" << to << "的路径";
-//        return QVector<QString>();
-//    }
-//
-//    // 添加到站点路径（去掉第一个站点，因为它已经在路径中）
-//    for (int j = 1; j < pathOnLastLine.size(); j++) {
-//        stationPath.append(pathOnLastLine[j]);
-//    }
-//
-//    qDebug() << "转换后的站点路径:" << stationPath;
-//    return stationPath;
-//}
-
-QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>& linePath,
-    const QString& from,
-    const QString& to) {
+/***************************************************************************
+  函数名称：PathFinder::convertLinePathToStationPath
+  功    能：将线路路径转换为站点路径
+  输入参数：const QVector<QString>& linePath  - 线路路径
+			const QString&          from      - 起点站点名称
+			const QString&          to        - 终点站点名称
+  返 回 值：QVector<QString> - 站点路径
+  说    明：
+***************************************************************************/
+QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>& linePath, const QString& from, const QString& to) {
     qDebug() << "将线路路径转换为站点路径:" << linePath;
 
     if (linePath.isEmpty()) {
@@ -589,20 +612,20 @@ QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>
         return QVector<QString>();
     }
 
-    // 获取线路到站点的映射
+    /* 获取线路到站点的映射*/
     QMap<QString, QVector<QString>> lineStations = getLineStations();
     QMap<QString, QVector<QString>> stationLines = getStationLines();
 
-    // 构建站点路径
+    /* 构建站点路径*/
     QVector<QString> stationPath;
     stationPath.append(from);
 
-    // 对于每条线路，找到换乘站
+    /* 对于每条线路，找到换乘站*/
     for (int i = 0; i < linePath.size() - 1; i++) {
         QString currentLine = linePath[i];
-        QString nextLine = linePath[i + 1];
+        QString nextLine    = linePath[i + 1];
 
-        // 找出两条线路的共同站点（换乘站）
+        /* 找出两条线路的共同站点（换乘站）*/
         QVector<QString> commonStations;
         for (const QString& station : lineStations[currentLine]) {
             if (lineStations[nextLine].contains(station)) {
@@ -615,41 +638,41 @@ QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>
             return QVector<QString>();
         }
 
-        // 选择距离当前站点最近的换乘站
+        /* 选择距离当前站点最近的换乘站*/
         QString bestTransferStation = commonStations.first();
-        int minDistance = std::numeric_limits<int>::max();
+        int     minDistance         = std::numeric_limits<int>::max();
 
         for (const QString& station : commonStations) {
-            // 计算从当前站点到换乘站的距离（站点数）
+            /* 计算从当前站点到换乘站的距离（站点数）*/
             QVector<QString> pathToStation = findPathOnLine(currentLine, stationPath.last(), station);
             if (!pathToStation.isEmpty() && pathToStation.size() < minDistance) {
-                minDistance = pathToStation.size();
+                minDistance         = pathToStation.size();
                 bestTransferStation = station;
             }
         }
 
-        // 在当前线路上找到从当前站点到换乘站的路径
+        /* 在当前线路上找到从当前站点到换乘站的路径*/
         QVector<QString> pathOnCurrentLine = findPathOnLine(currentLine, stationPath.last(), bestTransferStation);
         if (pathOnCurrentLine.isEmpty()) {
             qDebug() << "错误: 无法在线路" << currentLine << "上找到从" << stationPath.last() << "到" << bestTransferStation << "的路径";
             return QVector<QString>();
         }
 
-        // 添加到站点路径（去掉第一个站点，因为它已经在路径中）
+        /* 添加到站点路径（去掉第一个站点，因为它已经在路径中）*/
         for (int j = 1; j < pathOnCurrentLine.size(); j++) {
             stationPath.append(pathOnCurrentLine[j]);
         }
     }
 
-    // 在最后一条线路上找到从当前站点到终点的路径
-    QString lastLine = linePath.last();
+    /* 在最后一条线路上找到从当前站点到终点的路径*/
+    QString          lastLine       = linePath.last();
     QVector<QString> pathOnLastLine = findPathOnLine(lastLine, stationPath.last(), to);
     if (pathOnLastLine.isEmpty()) {
         qDebug() << "错误: 无法在线路" << lastLine << "上找到从" << stationPath.last() << "到" << to << "的路径";
         return QVector<QString>();
     }
 
-    // 添加到站点路径（去掉第一个站点，因为它已经在路径中）
+    /* 添加到站点路径（去掉第一个站点，因为它已经在路径中）*/
     for (int j = 1; j < pathOnLastLine.size(); j++) {
         stationPath.append(pathOnLastLine[j]);
     }
@@ -658,83 +681,32 @@ QVector<QString> PathFinder::convertLinePathToStationPath(const QVector<QString>
     return stationPath;
 }
 
-// 在线路上找到两个站点之间的路径，考虑分支情况
-//QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& from, const QString& to) {
-//    // 获取线路上的所有站点
-//    QMap<QString, QVector<QString>> lineStations = getLineStations();
-//    QVector<QString> stationsOnLine = lineStations[line];
-//
-//    // 找出起点和终点在线路上的位置
-//    int fromIndex = stationsOnLine.indexOf(from);
-//    int toIndex = stationsOnLine.indexOf(to);
-//
-//    if (fromIndex == -1 || toIndex == -1) {
-//        qDebug() << "错误: 站点" << from << "或" << to << "不在线路" << line << "上";
-//        return QVector<QString>();
-//    }
-//
-//    // 确定方向（正向或反向）
-//    QVector<QString> path;
-//    if (fromIndex <= toIndex) {
-//        // 正向
-//        for (int i = fromIndex; i <= toIndex; i++) {
-//            path.append(stationsOnLine[i]);
-//        }
-//    }
-//    else {
-//        // 反向
-//        for (int i = fromIndex; i >= toIndex; i--) {
-//            path.append(stationsOnLine[i]);
-//        }
-//    }
-//
-//    // 检查路径中是否有分支点
-//    // 如果有分支点，确保选择正确的分支方向
-//    for (int i = 0; i < path.size(); i++) {
-//        QString station = path[i];
-//        Station stationInfo = graph->getStation(station);
-//
-//        // 如果站点有多个连接，可能是分支点
-//        if (stationInfo.connectedStations.size() > 2) {
-//            // 检查当前路径是否选择了正确的分支
-//            if (i + 1 < path.size()) {
-//                QString nextStation = path[i + 1];
-//
-//                // 检查下一个站点是否在当前站点的连接中
-//                if (!stationInfo.connectedStations.contains(nextStation)) {
-//                    qDebug() << "警告: 路径中可能存在错误的分支选择"
-//                        << station << "->" << nextStation;
-//
-//                    // 尝试找到正确的路径
-//                    QVector<QString> alternativePath = findAlternativePathOnLine(line, from, to, station);
-//                    if (!alternativePath.isEmpty()) {
-//                        return alternativePath;
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    return path;
-//}
-
+/***************************************************************************
+  函数名称：PathFinder::findPathOnline
+  功    能：在路线上查找两个站点之间的路径
+  输入参数：const QString& line - 线路名称
+            const QString& from - 起点站名称
+			const QString& to   - 终点站名称
+  返 回 值：QVector<QString> 线路上两个站点之间的路径
+  说    明：
+***************************************************************************/
 QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& from, const QString& to) {
     qDebug() << "在线路" << line << "上查找从" << from << "到" << to << "的路径";
 
-    // 获取线路上的所有站点
-    QMap<QString, QVector<QString>> lineStations = getLineStations();
-    QVector<QString> stationsOnLine = lineStations[line];
+    /* 获取线路上的所有站点*/
+    QMap<QString, QVector<QString>> lineStations   = getLineStations();
+    QVector<QString>                stationsOnLine = lineStations[line];
 
-    // 找出起点和终点在线路上的位置
+    /* 找出起点和终点在线路上的位置*/
     int fromIndex = stationsOnLine.indexOf(from);
-    int toIndex = stationsOnLine.indexOf(to);
+    int toIndex   = stationsOnLine.indexOf(to);
 
     if (fromIndex == -1 || toIndex == -1) {
         qDebug() << "错误: 站点" << from << "或" << to << "不在线路" << line << "上";
         return QVector<QString>();
     }
 
-    // 检查线路是否有分支
+    /* 检查线路是否有分支*/
     bool hasBranch = false;
     for (const QString& station : stationsOnLine) {
         Station stationInfo = graph->getStation(station);
@@ -744,17 +716,17 @@ QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& 
         }
     }
 
-    // 如果没有分支，直接返回简单路径
+    /* 如果没有分支，直接返回简单路径*/
     if (!hasBranch) {
         QVector<QString> path;
         if (fromIndex <= toIndex) {
-            // 正向
+            /* 正向*/
             for (int i = fromIndex; i <= toIndex; i++) {
                 path.append(stationsOnLine[i]);
             }
         }
         else {
-            // 反向
+            /* 反向*/
             for (int i = fromIndex; i >= toIndex; i--) {
                 path.append(stationsOnLine[i]);
             }
@@ -762,66 +734,26 @@ QVector<QString> PathFinder::findPathOnLine(const QString& line, const QString& 
         return path;
     }
 
-    // 对于有分支的线路，使用BFS找到路径
+    /* 对于有分支的线路，使用BFS找到路径*/
     return findAlternativePathOnLine(line, from, to, "");
 }
-
-
-
-// 在线路上找到替代路径，处理分支情况
-//QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, const QString& from,
-//    const QString& to, const QString& branchPoint) {
-//    qDebug() << "尝试找到替代路径，处理分支:" << line << from << "->" << to << "分支点:" << branchPoint;
-//
-//    // 使用BFS在线路上找到从起点到终点的路径
-//    QMap<QString, QString> cameFrom;
-//    QSet<QString> visited;
-//    std::queue<QString> queue;
-//
-//    queue.push(from);
-//    visited.insert(from);
-//    cameFrom[from] = "";
-//
-//    while (!queue.empty()) {
-//        QString current = queue.front();
-//        queue.pop();
-//
-//        if (current == to) {
-//            // 重构路径
-//            QVector<QString> path;
-//            QString node = current;
-//            while (!node.isEmpty()) {
-//                path.prepend(node);
-//                node = cameFrom.value(node, "");
-//            }
-//            return path;
-//        }
-//
-//        Station stationInfo = graph->getStation(current);
-//
-//        // 只考虑在同一线路上的邻居
-//        for (const QString& neighbor : stationInfo.connectedStations) {
-//            QString neighborLine = getLineBetweenStations(current, neighbor);
-//            if (neighborLine == line && !visited.contains(neighbor)) {
-//                visited.insert(neighbor);
-//                cameFrom[neighbor] = current;
-//                queue.push(neighbor);
-//            }
-//        }
-//    }
-//
-//    qDebug() << "错误: 无法在线路" << line << "上找到从" << from << "到" << to << "的替代路径";
-//    return QVector<QString>();
-//}
-
-QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, const QString& from,
-    const QString& to, const QString& branchPoint) {
+/***************************************************************************
+  函数名称：PathFinder::findAlternativePathOnLine
+  功    能：在线路上查找两个站点之间的替代路径，处理分支情况
+  输入参数：const QString& line        - 线路名称
+			const QString& from        - 起点站名称
+			const QString& to          - 终点站名称
+			const QString& branchPoint - 分支点站名称（可选）
+  返 回 值：QVector<QString> 线路上两个站点之间的路径
+  说    明：
+  ***************************************************************************/
+QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, const QString& from,const QString& to, const QString& branchPoint) {
     qDebug() << "尝试找到替代路径，处理分支:" << line << from << "->" << to << "分支点:" << branchPoint;
 
-    // 使用BFS在线路上找到从起点到终点的路径
+    /* 使用BFS在线路上找到从起点到终点的路径*/
     QMap<QString, QString> cameFrom;
-    QSet<QString> visited;
-    std::queue<QString> queue;
+    QSet<QString>          visited;
+    std::queue<QString>    queue;
 
     queue.push(from);
     visited.insert(from);
@@ -832,7 +764,7 @@ QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, cons
         queue.pop();
 
         if (current == to) {
-            // 重构路径
+            /* 重构路径*/
             QVector<QString> path;
             QString node = current;
             while (!node.isEmpty()) {
@@ -845,7 +777,7 @@ QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, cons
 
         Station stationInfo = graph->getStation(current);
 
-        // 只考虑在同一线路上的邻居
+        /* 只考虑在同一线路上的邻居*/
         for (const QString& neighbor : stationInfo.connectedStations) {
             QString neighborLine = getLineBetweenStations(current, neighbor);
             if (neighborLine == line && !visited.contains(neighbor)) {
@@ -860,95 +792,17 @@ QVector<QString> PathFinder::findAlternativePathOnLine(const QString& line, cons
     return QVector<QString>();
 }
 
-
-
-//QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
-//    QMap<QString, QVector<QString>> lineStations;
-//
-//    // 遍历所有连接，构建线路到站点的映射
-//    for (const StationConnection& conn : graph->getConnections()) {
-//        if (!lineStations[conn.line].contains(conn.station1)) {
-//            lineStations[conn.line].append(conn.station1);
-//        }
-//        if (!lineStations[conn.line].contains(conn.station2)) {
-//            lineStations[conn.line].append(conn.station2);
-//        }
-//    }
-//
-//    // 对每条线路的站点进行排序（按照线路顺序）
-//    for (auto& line : lineStations.keys()) {
-//        // 找出线路的端点（连接数最少的站点）
-//        QVector<QString> endStations;
-//
-//        for (const QString& station : lineStations[line]) {
-//            Station stationInfo = graph->getStation(station);
-//            int connectionCount = stationInfo.connectedStations.size();
-//
-//            // 如果站点只有一个连接，或者是分支点，可能是端点
-//            if (connectionCount == 1 || connectionCount > 2) {
-//                endStations.append(station);
-//            }
-//        }
-//
-//        // 如果找不到端点，选择任意两个站点作为端点
-//        if (endStations.size() < 2) {
-//            for (const QString& station : lineStations[line]) {
-//                if (endStations.size() >= 2) break;
-//                if (!endStations.contains(station)) {
-//                    endStations.append(station);
-//                }
-//            }
-//        }
-//
-//        // 使用BFS从端点开始构建线路顺序
-//        QVector<QVector<QString>> possiblePaths;
-//
-//        // 尝试从每个端点开始构建路径
-//        for (const QString& endStation : endStations) {
-//            QVector<QString> path;
-//            QSet<QString> visited;
-//            std::queue<QString> queue;
-//
-//            queue.push(endStation);
-//            visited.insert(endStation);
-//
-//            while (!queue.empty()) {
-//                QString current = queue.front();
-//                queue.pop();
-//
-//                path.append(current);
-//
-//                Station stationInfo = graph->getStation(current);
-//                for (const QString& neighbor : stationInfo.connectedStations) {
-//                    if (!visited.contains(neighbor) && lineStations[line].contains(neighbor)) {
-//                        visited.insert(neighbor);
-//                        queue.push(neighbor);
-//                    }
-//                }
-//            }
-//
-//            possiblePaths.append(path);
-//        }
-//
-//        // 选择最长的路径作为线路顺序
-//        QVector<QString> longestPath;
-//        for (const QVector<QString>& path : possiblePaths) {
-//            if (path.size() > longestPath.size()) {
-//                longestPath = path;
-//            }
-//        }
-//
-//        // 更新线路的站点顺序
-//        lineStations[line] = longestPath;
-//    }
-//
-//    return lineStations;
-//}
-
+/***************************************************************************
+  函数名称：PathFinder::getLineStations
+  功    能：获取线路到站点的映射
+  输入参数：
+  返 回 值：QMap<QString,QVector<QString>> - 线路到站点的映射
+  说    明：
+***************************************************************************/
 QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
     QMap<QString, QVector<QString>> lineStations;
 
-    // 遍历所有连接，构建线路到站点的映射
+    /* 遍历所有连接，构建线路到站点的映射*/
     for (const StationConnection& conn : graph->getConnections()) {
         if (!lineStations[conn.line].contains(conn.station1)) {
             lineStations[conn.line].append(conn.station1);
@@ -958,14 +812,14 @@ QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
         }
     }
 
-    // 对每条线路的站点进行排序（按照线路顺序）
+    /* 对每条线路的站点进行排序（按照线路顺序）*/
     for (auto& line : lineStations.keys()) {
-        // 使用BFS从任意站点开始构建线路顺序
-        QVector<QString> sortedStations;
-        QSet<QString> visited;
+        /* 使用BFS从任意站点开始构建线路顺序*/
+        QVector<QString>    sortedStations;
+        QSet<QString>       visited;
         std::queue<QString> queue;
 
-        // 找到端点（连接数为1的站点）
+        /* 找到端点（连接数为1的站点）*/
         QString endStation;
         for (const QString& station : lineStations[line]) {
             Station stationInfo = graph->getStation(station);
@@ -981,7 +835,7 @@ QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
             }
         }
 
-        // 如果没有找到端点，选择第一个站点
+        /* 如果没有找到端点，选择第一个站点*/
         if (endStation.isEmpty()) {
             endStation = lineStations[line].first();
         }
@@ -1004,9 +858,10 @@ QMap<QString, QVector<QString>> PathFinder::getLineStations() const {
             }
         }
 
-        // 更新线路的站点顺序
+        /* 更新线路的站点顺序*/
         lineStations[line] = sortedStations;
     }
 
     return lineStations;
 }
+/*PathFinder.cpp*/

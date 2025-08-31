@@ -1,6 +1,8 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# 辅助脚本,将站点按照拼音排序
+
 import json
 import sys
 from pypinyin import pinyin, Style
